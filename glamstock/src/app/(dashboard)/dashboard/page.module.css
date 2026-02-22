@@ -178,6 +178,23 @@
   margin: 0;
 }
 
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ffffff;
+  z-index: 300;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toastSuccess { background-color: #16a34a; }
+.toastError   { background-color: #850E35; }
+
+
 @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px)  { .statsRow { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 500px)  { .statsRow { grid-template-columns: 1fr; } }

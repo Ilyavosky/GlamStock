@@ -24,9 +24,11 @@ interface SucursalCardProps {
   inventario: InventarioItem[];
   loading: boolean;
   onDelete: (idVariante: number) => void;
+  onEdit: (idVariante: number) => void;
+  onInfo: (idVariante: number) => void;
 }
 
-export default function SucursalCard({ nombre, ubicacion, inventario, loading, onDelete }: SucursalCardProps) {
+export default function SucursalCard({ nombre, ubicacion, inventario, loading, onDelete, onEdit, onInfo }: SucursalCardProps) {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -92,8 +94,14 @@ export default function SucursalCard({ nombre, ubicacion, inventario, loading, o
                             className={`${styles.dropdownItem} ${styles.dropdownDanger}`}
                             onClick={() => { setOpenMenuId(null); onDelete(item.id_variante); }}
                           >Eliminar</button>
-                          <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Editar</button>
-                          <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Más info</button>
+                          <button
+                            className={styles.dropdownItem}
+                            onClick={() => { setOpenMenuId(null); onEdit(item.id_variante); }}
+                          >Editar</button>
+                          <button
+                            className={styles.dropdownItem}
+                            onClick={() => { setOpenMenuId(null); onInfo(item.id_variante); }}
+                          >Más info</button>
                         </div>
                       )}
                     </div>
