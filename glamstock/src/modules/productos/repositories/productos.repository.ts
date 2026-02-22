@@ -127,6 +127,7 @@ export class ProductosRepository {
       FROM variantes v
       INNER JOIN inventario_sucursal inv ON v.id_variante = inv.id_variante
       WHERE v.id_producto_maestro = $1
+      AND inv.stock_actual > 0
       LIMIT 1;
     `;
     const { rows: inventarioRows } = await db.query(inventarioQuery, [id]);
@@ -138,6 +139,11 @@ export class ProductosRepository {
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
+      await client.query(`
+        DELETE FROM inventario_sucursal 
+        WHERE id_variante IN (
+        SELECT id_variante FROM variantes WHERE id_producto_maestro = $1
+      )`, [id]);
       await client.query(`DELETE FROM variantes WHERE id_producto_maestro = $1;`, [id]);
       await client.query(`DELETE FROM productos_maestros WHERE id_producto_maestro = $1;`, [id]);
       await client.query('COMMIT');
@@ -179,6 +185,7 @@ export class ProductosRepository {
           precio_venta_etiqueta: row.precio_venta_etiqueta as number,
           etiqueta_generada: row.etiqueta_generada as boolean,
           created_at: row.variante_created_at as Date,
+          sucursal: row.sucursal as string | null,
         });
       }
     }

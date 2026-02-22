@@ -48,6 +48,24 @@
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
 }
 
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.select option[value=""] {
+  color: #9ca3af;
+}
+
 .error {
   font-size: 0.78rem;
   color: #dc2626;
