@@ -6,6 +6,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import StatsCard from './Statscard';
 import EditProductoModal from '../inventario/Editproducto';
 import InfoProductoModal from '../inventario/Infoproducto';
+import SucursalCard, { InventarioItem } from '../sucursales/SucursalCard';
 import styles from './page.module.css';
 
 interface DashboardStats {
@@ -37,20 +38,10 @@ interface ProductoFila {
   valorVenta: number;
 }
 
-interface InventarioItem {
-  id_inventario: number;
-  id_variante: number;
-  sku_producto: string;
-  nombre_producto: string;
-  stock_actual: number;
-  precio_venta: number;
-}
-
 interface SucursalData {
   id_sucursal: number;
   nombre_lugar: string;
   ubicacion: string;
-  totalProductos: number;
   inventario: InventarioItem[];
   loading: boolean;
 }
@@ -58,25 +49,18 @@ interface SucursalData {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-
   const [productos, setProductos] = useState<ProductoFila[]>([]);
   const [filtered, setFiltered] = useState<ProductoFila[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
-
   const [sucursales, setSucursales] = useState<SucursalData[]>([]);
-  const [precioAdqMap, setPrecioAdqMap] = useState<Map<number, number>>(new Map());
   const [varianteSucursalMap, setVarianteSucursalMap] = useState<Map<number, string>>(new Map());
   const [varianteToProductoMap, setVarianteToProductoMap] = useState<Map<number, number>>(new Map());
-
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-
   const [editId, setEditId] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
   const [infoId, setInfoId] = useState<number | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
-
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
@@ -112,87 +96,70 @@ export default function DashboardPage() {
 
   const fetchTodo = useCallback(async () => {
     setTableLoading(true);
-    let adqMap = new Map<number, number>();
 
     try {
-      const res = await fetch('/api/productos?page=1&limit=100', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
+      const [resProductos, resSucursales] = await Promise.all([
+        fetch('/api/productos?page=1&limit=100', { credentials: 'include' }),
+        fetch('/api/inventario/sucursales', { credentials: 'include' }),
+      ]);
 
-        const productoMap = new Map<number, number>();
-        (data.productos || []).forEach((p: Producto) => {
-          p.variantes.forEach(v => {
-            adqMap.set(v.id_variante, Number(v.precio_adquisicion));
-            productoMap.set(v.id_variante, p.id_producto_maestro);
-          });
+      const dataProductos = resProductos.ok ? await resProductos.json() : { productos: [] };
+      const dataSucursales = resSucursales.ok ? await resSucursales.json() : { data: [] };
+      const listaSucursales: { id_sucursal: number; nombre_lugar: string; ubicacion: string }[] = dataSucursales.data || [];
+
+      const productoMap = new Map<number, number>();
+      const adqMap = new Map<number, number>();
+      (dataProductos.productos || []).forEach((p: Producto) => {
+        p.variantes.forEach(v => {
+          adqMap.set(v.id_variante, Number(v.precio_adquisicion));
+          productoMap.set(v.id_variante, p.id_producto_maestro);
         });
-        setPrecioAdqMap(adqMap);
-        setVarianteToProductoMap(productoMap);
+      });
+      setVarianteToProductoMap(productoMap);
 
-        const resSucursales = await fetch('/api/inventario/sucursales', { credentials: 'include' });
-        const sucursalesData = resSucursales.ok ? await resSucursales.json() : { data: [] };
-        const listaSucursales: { id_sucursal: number }[] = sucursalesData.data || [];
-
-        const inventariosPorSucursal = await Promise.all(
-          listaSucursales.map(async (s) => {
-            const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
-            if (!r.ok) return [];
-            const d = await r.json();
-            return d.data || [];
-          })
-        );
-
-        const stockMap = new Map<number, number>();
-        inventariosPorSucursal.flat().forEach((item: { id_variante: number; stock_actual: number }) => {
-          const actual = stockMap.get(item.id_variante) ?? 0;
-          stockMap.set(item.id_variante, actual + item.stock_actual);
-        });
-
-        const filas: ProductoFila[] = (data.productos || []).map((p: Producto) => ({
-          id: p.id_producto_maestro,
-          sku: p.sku,
-          nombre: p.nombre,
-          totalStock: p.variantes.reduce((acc, v) => acc + (stockMap.get(v.id_variante) ?? 0), 0),
-          valorOriginal: p.variantes.reduce((a, v) => a + Number(v.precio_adquisicion), 0),
-          valorVenta: p.variantes.reduce((a, v) => a + Number(v.precio_venta_etiqueta), 0),
-        }));
-        setProductos(filas);
-        setFiltered(filas);
-      }
-    } finally {
-      setTableLoading(false);
-    }
-
-    try {
-      const res = await fetch('/api/inventario/sucursales', { credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json();
-      const lista = (data.data || []) as { id_sucursal: number; nombre_lugar: string; ubicacion: string }[];
-
-      setSucursales(lista.map(s => ({ ...s, totalProductos: 0, inventario: [], loading: true })));
-
-      const conInventario = await Promise.all(
-        lista.map(async (s) => {
-          try {
-            const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
-            const d = r.ok ? await r.json() : { data: [] };
-            const inv: InventarioItem[] = d.data || [];
-            return { ...s, inventario: inv, totalProductos: inv.length, loading: false };
-          } catch {
-            return { ...s, inventario: [], totalProductos: 0, loading: false };
-          }
+      const inventariosPorSucursal = await Promise.all(
+        listaSucursales.map(async (s) => {
+          const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
+          const d = r.ok ? await r.json() : { data: [] };
+          const inv: InventarioItem[] = (d.data || []).map((item: InventarioItem) => ({
+            ...item,
+            precio_adquisicion: adqMap.get(item.id_variante),
+          }));
+          return { ...s, inventario: inv, loading: false };
         })
       );
 
       const vsMap = new Map<number, string>();
-      conInventario.forEach(s => {
+      inventariosPorSucursal.forEach(s => {
         s.inventario.forEach(item => {
           if (!vsMap.has(item.id_variante)) vsMap.set(item.id_variante, s.nombre_lugar);
         });
       });
       setVarianteSucursalMap(vsMap);
-      setSucursales(conInventario);
-    } catch {}
+      setSucursales(inventariosPorSucursal);
+
+      const stockMap = new Map<number, number>();
+      inventariosPorSucursal.forEach(s => {
+        s.inventario.forEach((item: InventarioItem) => {
+          const actual = stockMap.get(item.id_variante) ?? 0;
+          stockMap.set(item.id_variante, actual + item.stock_actual);
+        });
+      });
+
+      const filas: ProductoFila[] = (dataProductos.productos || []).map((p: Producto) => ({
+        id: p.id_producto_maestro,
+        sku: p.sku,
+        nombre: p.nombre,
+        totalStock: p.variantes.reduce((acc, v) => acc + (stockMap.get(v.id_variante) ?? 0), 0),
+        valorOriginal: p.variantes.reduce((a, v) => a + Number(v.precio_adquisicion), 0),
+        valorVenta: p.variantes.reduce((a, v) => a + Number(v.precio_venta_etiqueta), 0),
+      }));
+      setProductos(filas);
+      setFiltered(filas);
+
+    } finally {
+      setTableLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -275,74 +242,23 @@ export default function DashboardPage() {
         <>
           <h2 className={styles.sectionTitle}>Por sucursal</h2>
           <div className={styles.grid}>
-            {sucursales.map((s) => (
-              <div key={s.id_sucursal} className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardMeta}>
-                    <h3>{s.nombre_lugar}</h3>
-                    {s.ubicacion && <p>{s.ubicacion}</p>}
-                  </div>
-                  <span className={styles.cardTotal}>
-                    Total productos: <strong>{s.loading ? '...' : s.totalProductos}</strong>
-                  </span>
-                </div>
-
-                <div className={styles.tableWrapper}>
-                  {s.loading ? (
-                    <div className={styles.loading}><div className={styles.spinner} /></div>
-                  ) : s.inventario.length === 0 ? (
-                    <p className={styles.emptyCard}>Sin productos en esta sucursal</p>
-                  ) : (
-                    <table className={styles.innerTable}>
-                      <thead>
-                        <tr>
-                          <th>SKU</th>
-                          <th>Productos</th>
-                          <th>Total Stock</th>
-                          <th>Valor original</th>
-                          <th>Valor venta</th>
-                          <th>Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {s.inventario.map(item => {
-                          const key = `i-${item.id_inventario}`;
-                          const precioAdq = precioAdqMap.get(item.id_variante);
-                          return (
-                            <tr key={item.id_inventario}>
-                              <td>{item.sku_producto}</td>
-                              <td>{item.nombre_producto}</td>
-                              <td>{item.stock_actual}</td>
-                              <td>{precioAdq != null ? `$${precioAdq.toLocaleString()}` : '—'}</td>
-                              <td>${Number(item.precio_venta).toLocaleString()}</td>
-                              <td>
-                                <div className={styles.menuWrapper}>
-                                  <button className={styles.menuTrigger} onClick={(e) => openMenu(e, key)}>•••</button>
-                                  {openMenuKey === key && menuPos && (
-                                    <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
-                                      <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={closeMenu}>Eliminar</button>
-                                      <button className={styles.dropdownItem} onClick={() => {
-                                        const idProducto = varianteToProductoMap.get(item.id_variante);
-                                        if (idProducto) handleOpenEdit(idProducto);
-                                        closeMenu();
-                                      }}>Editar</button>
-                                      <button className={styles.dropdownItem} onClick={() => {
-                                        const idProducto = varianteToProductoMap.get(item.id_variante);
-                                        if (idProducto) handleOpenInfo(idProducto);
-                                        closeMenu();
-                                      }}>Más info</button>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
+            {sucursales.map(s => (
+              <SucursalCard
+                key={s.id_sucursal}
+                nombre={s.nombre_lugar}
+                ubicacion={s.ubicacion}
+                inventario={s.inventario}
+                loading={s.loading}
+                onDelete={() => closeMenu()}
+                onEdit={(idVariante) => {
+                  const idProducto = varianteToProductoMap.get(idVariante);
+                  if (idProducto) handleOpenEdit(idProducto);
+                }}
+                onInfo={(idVariante) => {
+                  const idProducto = varianteToProductoMap.get(idVariante);
+                  if (idProducto) handleOpenInfo(idProducto);
+                }}
+              />
             ))}
           </div>
         </>
