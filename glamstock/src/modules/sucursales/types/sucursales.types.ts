@@ -28,3 +28,4 @@ export interface DeleteSucursalInput{
     nombre_lugar: string;
 }
 
+export * from './sucursales.types';
