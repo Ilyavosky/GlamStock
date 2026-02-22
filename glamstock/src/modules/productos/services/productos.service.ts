@@ -34,12 +34,14 @@ export class ProductosService {
         throw new ValidationError(`El precio de venta no puede ser menor al costo en la variante ${v.codigo_barras || ''}`);
       }
 
-      return {
-        ...v,
-        modelo: v.modelo ? v.modelo.trim().toUpperCase() : null,
-        color: v.color ? v.color.trim().toUpperCase() : null,
-        codigo_barras: v.codigo_barras.trim(),
-        etiqueta_generada: true, // Regla de negocio: se asume generada al crear
+     return {
+       ...v,
+       modelo: v.modelo ? v.modelo.trim().toUpperCase() : null,
+       color: v.color ? v.color.trim().toUpperCase() : null,
+       codigo_barras: v.codigo_barras
+         ? v.codigo_barras.trim()
+         : `CB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+       etiqueta_generada: true,
       };
     });
 
