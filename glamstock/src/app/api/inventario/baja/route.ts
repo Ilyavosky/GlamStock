@@ -5,7 +5,7 @@ import { isAppError } from '@/lib/errors/app-error';
 import { z } from 'zod';
 import { idSchema } from '@/lib/validations/common.schemas';
 import { MOTIVOS_VALIDOS } from '@/modules/inventario/schemas/inventario.schema';
-import { db } from '@/lib/db/client';
+import { db } from '../../../../../../db/client';
 import { NotFoundError } from '@/lib/errors/app-error';
 
 const registrarBajaApiSchema = z.object({

@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '../../../../../db/client';
 import { InventarioRepository } from '../repositories/inventario.repository';
 import {
   InventarioConValor,

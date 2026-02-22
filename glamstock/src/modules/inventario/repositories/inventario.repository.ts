@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '../../../../../db/client';
 import { InventarioSucursal, InventarioDetallado, CreateInventarioInput } from '../types/inventario.types';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors/app-error';
 

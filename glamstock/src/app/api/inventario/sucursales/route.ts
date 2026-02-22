@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db/client';
+import { db } from '../../../../../../db/client';
 import { verifyToken } from '@/modules/auth/middleware/jwt.middleware';
 import { isAppError } from '@/lib/errors/app-error';
 

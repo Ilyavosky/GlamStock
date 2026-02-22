@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '../../../../../db/client';
 import { Usuario, UsuarioSinPassword } from '../types/auth.types';
 import { ConflictError } from '@/lib/errors/app-error';
 

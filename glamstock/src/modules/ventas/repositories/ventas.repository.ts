@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '../../../../../db/client';
 import { Venta, VentaDetallada, CreateVentaInput, PaginationOptions, TotalVentas } from '../types/ventas.types';
 
 
