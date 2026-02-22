@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/client';
 import { Sucursal, CreateSucursalInput, UpdateSucursalInput } from '../types/sucursales.types';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors/app-error';
+import { InventarioDetallado } from '@/modules/inventario/types/inventario.types';
 
 export class SucursalesRepository {
 
@@ -119,4 +120,54 @@ export class SucursalesRepository {
             client.release();
         }
     }
+    
+    static async findByIdWithFilters(
+    id_sucursal: number,
+    filtros: {
+        sku?: string;
+        nombre?: string;
+        min_stock?: number;
+        max_stock?: number;
+    }
+): Promise<InventarioDetallado[]> {
+    const condiciones: string[] = ['i.id_sucursal = $1'];
+    const valores: unknown[] = [id_sucursal];
+    let paramIndex = 2;
+
+    if (filtros.sku) {
+        condiciones.push(`p.sku ILIKE $${paramIndex++}`);
+        valores.push(`%${filtros.sku}%`);
+    }
+    if (filtros.nombre) {
+        condiciones.push(`p.nombre ILIKE $${paramIndex++}`);
+        valores.push(`%${filtros.nombre}%`);
+    }
+    if (filtros.min_stock !== undefined) {
+        condiciones.push(`i.stock_actual >= $${paramIndex++}`);
+        valores.push(filtros.min_stock);
+    }
+    if (filtros.max_stock !== undefined) {
+        condiciones.push(`i.stock_actual <= $${paramIndex++}`);
+        valores.push(filtros.max_stock);
+    }
+    
+    //@Yion estó se podrá reemplazar por una view más adelante
+    const query = `
+        SELECT
+            i.id_inventario, i.id_variante, i.id_sucursal, i.stock_actual, i.updated_at,
+            p.sku AS sku_producto, p.nombre AS nombre_producto,
+            v.codigo_barras, v.modelo, v.color,
+            v.precio_adquisicion,
+            v.precio_venta_etiqueta AS precio_venta
+        FROM inventario_sucursal i
+        JOIN variantes v ON i.id_variante = v.id_variante
+        JOIN productos_maestros p ON v.id_producto_maestro = p.id_producto_maestro
+        WHERE ${condiciones.join(' AND ')}
+        ORDER BY p.nombre, v.modelo;
+    `;
+
+    const { rows } = await db.query(query, valores);
+    return rows;
+}
+
 }
