@@ -8,6 +8,7 @@ export interface Variante {
   precio_venta_etiqueta: number;
   etiqueta_generada: boolean;
   created_at: Date;
+  sucursal?: string | null;
 }
 
 // DTOs de entrada

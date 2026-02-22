@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import ActionMenu from './ActionMenu';
 import styles from './SucursalCard.module.css';
 
 export interface InventarioItem {
@@ -15,6 +14,7 @@ export interface InventarioItem {
   modelo: string | null;
   color: string | null;
   precio_venta: number;
+  precio_adquisicion?: number;
   valor_total: number;
 }
 
@@ -28,6 +28,7 @@ interface SucursalCardProps {
 
 export default function SucursalCard({ nombre, ubicacion, inventario, loading, onDelete }: SucursalCardProps) {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   return (
     <div className={styles.card} onClick={() => setOpenMenuId(null)}>
@@ -52,7 +53,7 @@ export default function SucursalCard({ nombre, ubicacion, inventario, loading, o
               <tr>
                 <th className={styles.th}>SKU</th>
                 <th className={styles.th}>Productos</th>
-                <th className={styles.th}>Total Stock</th>
+                <th className={styles.th}>Stock</th>
                 <th className={styles.th}>Valor original</th>
                 <th className={styles.th}>Valor venta</th>
                 <th className={styles.th}>Acciones</th>
@@ -64,16 +65,38 @@ export default function SucursalCard({ nombre, ubicacion, inventario, loading, o
                   <td className={styles.td}>{item.sku_producto}</td>
                   <td className={styles.td}>{item.nombre_producto}</td>
                   <td className={styles.td}>{item.stock_actual}</td>
-                  <td className={styles.td}>—</td>
+                  <td className={styles.td}>
+                    {item.precio_adquisicion != null
+                      ? `$${Number(item.precio_adquisicion).toLocaleString()}`
+                      : '—'}
+                  </td>
                   <td className={styles.td}>${Number(item.precio_venta).toLocaleString()}</td>
                   <td className={styles.td}>
-                    <ActionMenu
-                      isOpen={openMenuId === item.id_inventario}
-                      onToggle={() => setOpenMenuId(openMenuId === item.id_inventario ? null : item.id_inventario)}
-                      onDelete={() => { setOpenMenuId(null); onDelete(item.id_variante); }}
-                      onEdit={() => setOpenMenuId(null)}
-                      onDetails={() => setOpenMenuId(null)}
-                    />
+                    <div className={styles.menuWrapper}>
+                      <button
+                        className={styles.menuTrigger}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 120 });
+                          setOpenMenuId(openMenuId === item.id_inventario ? null : item.id_inventario);
+                        }}
+                      >•••</button>
+                      {openMenuId === item.id_inventario && menuPos && (
+                        <div
+                          className={styles.dropdown}
+                          style={{ top: menuPos.top, left: menuPos.left }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            className={`${styles.dropdownItem} ${styles.dropdownDanger}`}
+                            onClick={() => { setOpenMenuId(null); onDelete(item.id_variante); }}
+                          >Eliminar</button>
+                          <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Editar</button>
+                          <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Más info</button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

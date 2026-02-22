@@ -10,7 +10,9 @@ export class InventarioRepository {
       SELECT 
         i.id_inventario, i.id_variante, i.id_sucursal, i.stock_actual, i.updated_at,
         p.sku as sku_producto, p.nombre as nombre_producto,
-        v.codigo_barras, v.modelo, v.color, v.precio_venta_etiqueta as precio_venta
+        v.codigo_barras, v.modelo, v.color,
+        v.precio_adquisicion,
+        v.precio_venta_etiqueta as precio_venta
       FROM inventario_sucursal i
       JOIN variantes v ON i.id_variante = v.id_variante
       JOIN productos_maestros p ON v.id_producto_maestro = p.id_producto_maestro

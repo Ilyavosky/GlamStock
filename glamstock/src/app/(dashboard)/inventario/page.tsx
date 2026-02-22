@@ -12,6 +12,7 @@ interface Variante {
   id_variante: number;
   precio_adquisicion: number;
   precio_venta_etiqueta: number;
+  sucursal?: string;
 }
 
 interface Producto {
@@ -28,6 +29,13 @@ interface ProductoFila {
   totalStock: number;
   valorOriginal: number;
   valorVenta: number;
+  sucursal: string;
+}
+
+interface Sucursal {
+  id_sucursal: number;
+  nombre_lugar: string;
+  ubicacion: string;
 }
 
 interface FormData {
@@ -38,12 +46,15 @@ interface FormData {
   codigo_barras: string;
   precio_adquisicion: string;
   precio_venta_etiqueta: string;
+  sucursal_id: string;
+  stock_inicial: string;
 }
 
 interface FormErrors {
   nombre?: string;
   precio_adquisicion?: string;
   precio_venta_etiqueta?: string;
+  sucursal_id?: string;
 }
 
 const FORM_INITIAL: FormData = {
@@ -54,6 +65,8 @@ const FORM_INITIAL: FormData = {
   codigo_barras: '',
   precio_adquisicion: '',
   precio_venta_etiqueta: '',
+  sucursal_id: '',
+  stock_inicial: '0',
 };
 
 const ITEMS_PER_PAGE = 20;
@@ -65,6 +78,7 @@ export default function InventarioPage() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -72,6 +86,9 @@ export default function InventarioPage() {
   const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [loadingSucursales, setLoadingSucursales] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -82,9 +99,7 @@ export default function InventarioPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/productos?page=1&limit=100', {
-        credentials: 'include',
-      });
+      const res = await fetch('/api/productos?page=1&limit=100', { credentials: 'include' });
       if (!res.ok) throw new Error('Error al cargar productos');
       const data = await res.json();
 
@@ -95,6 +110,7 @@ export default function InventarioPage() {
         totalStock: p.variantes.length,
         valorOriginal: p.variantes.reduce((acc, v) => acc + Number(v.precio_adquisicion), 0),
         valorVenta: p.variantes.reduce((acc, v) => acc + Number(v.precio_venta_etiqueta), 0),
+        sucursal: p.variantes[0]?.sucursal || '—',
       }));
 
       setProductos(filas);
@@ -106,29 +122,35 @@ export default function InventarioPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchProductos();
-  }, [fetchProductos]);
+  const fetchSucursales = useCallback(async () => {
+    setLoadingSucursales(true);
+    try {
+      const res = await fetch('/api/inventario/sucursales', { credentials: 'include' });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setSucursales(data.data || []);
+    } catch {
+      setSucursales([]);
+    } finally {
+      setLoadingSucursales(false);
+    }
+  }, []);
 
-  const handleSearch = useCallback(
-    (term: string) => {
-      setPage(1);
-      if (!term.trim()) { setFiltered(productos); return; }
-      const lower = term.toLowerCase();
-      setFiltered(productos.filter((p) =>
-        p.nombre.toLowerCase().includes(lower) || p.sku.toLowerCase().includes(lower)
-      ));
-    },
-    [productos]
-  );
+  useEffect(() => { fetchProductos(); }, [fetchProductos]);
+
+  const handleSearch = useCallback((term: string) => {
+    setPage(1);
+    if (!term.trim()) { setFiltered(productos); return; }
+    const lower = term.toLowerCase();
+    setFiltered(productos.filter((p) =>
+      p.nombre.toLowerCase().includes(lower) || p.sku.toLowerCase().includes(lower)
+    ));
+  }, [productos]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/productos/${deleteId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const res = await fetch(`/api/productos/${deleteId}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error();
       showToast('Producto eliminado correctamente', 'success');
       fetchProductos();
@@ -148,18 +170,23 @@ export default function InventarioPage() {
     if (name === 'precio_venta_etiqueta') {
       if (!value) return 'El precio de venta es obligatorio';
       if (isNaN(Number(value)) || Number(value) < 0) return 'Debe ser un número positivo';
-      if (formData.precio_adquisicion && Number(value) < Number(formData.precio_adquisicion)) {
+      if (formData.precio_adquisicion && Number(value) < Number(formData.precio_adquisicion))
         return 'Debe ser mayor al precio de adquisición';
-      }
     }
+    if (name === 'sucursal_id' && !value) return 'Debes seleccionar una sucursal';
     return undefined;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     const err = validateField(name as keyof FormData, value);
     setFormErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  const handleOpenModal = () => {
+    setShowModal(true);
+    fetchSucursales();
   };
 
   const handleCloseModal = () => {
@@ -170,34 +197,31 @@ export default function InventarioPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const errors: FormErrors = {};
     const nombreErr = validateField('nombre', formData.nombre);
     const precioAdqErr = validateField('precio_adquisicion', formData.precio_adquisicion);
     const precioVentaErr = validateField('precio_venta_etiqueta', formData.precio_venta_etiqueta);
+    const sucursalErr = validateField('sucursal_id', formData.sucursal_id);
     if (nombreErr) errors.nombre = nombreErr;
     if (precioAdqErr) errors.precio_adquisicion = precioAdqErr;
     if (precioVentaErr) errors.precio_venta_etiqueta = precioVentaErr;
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
+    if (sucursalErr) errors.sucursal_id = sucursalErr;
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setSubmitting(true);
     try {
       const body = {
         nombre: formData.nombre.trim(),
         ...(formData.sku.trim() && { sku: formData.sku.trim() }),
-        variantes: [
-          {
-            codigo_barras: formData.codigo_barras.trim() || `CB-${Date.now()}`,
-            ...(formData.modelo.trim() && { modelo: formData.modelo.trim() }),
-            ...(formData.color.trim() && { color: formData.color.trim() }),
-            precio_adquisicion: Number(formData.precio_adquisicion),
-            precio_venta_etiqueta: Number(formData.precio_venta_etiqueta),
-          },
-        ],
+        variantes: [{
+          codigo_barras: formData.codigo_barras.trim() || `CB-${Date.now()}`,
+          ...(formData.modelo.trim() && { modelo: formData.modelo.trim() }),
+          ...(formData.color.trim() && { color: formData.color.trim() }),
+          precio_adquisicion: Number(formData.precio_adquisicion),
+          precio_venta_etiqueta: Number(formData.precio_venta_etiqueta),
+          sucursal_id: Number(formData.sucursal_id),
+          stock_inicial: Number(formData.stock_inicial) || 0,
+        }],
       };
 
       const res = await fetch('/api/productos', {
@@ -229,7 +253,7 @@ export default function InventarioPage() {
     { header: 'Total Stock', key: 'totalStock' },
     { header: 'Valor original', key: 'valorOriginal', render: (row) => `$${row.valorOriginal.toLocaleString()}` },
     { header: 'Valor venta', key: 'valorVenta', render: (row) => `$${row.valorVenta.toLocaleString()}` },
-    { header: 'Sucursal', key: 'sucursal', render: () => 'General' },
+    { header: 'Sucursal', key: 'sucursal' },
     {
       header: 'Acciones',
       key: 'acciones',
@@ -237,11 +261,23 @@ export default function InventarioPage() {
         <div className={styles.menuWrapper}>
           <button
             className={styles.menuTrigger}
-            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === row.id ? null : row.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMenuPos({ top: rect.bottom + 4, left: rect.right - 120 });
+              setOpenMenuId(openMenuId === row.id ? null : row.id);
+            }}
           >•••</button>
-          {openMenuId === row.id && (
-            <div className={styles.dropdown}>
-              <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={() => { setDeleteId(row.id); setOpenMenuId(null); }}>Eliminar</button>
+          {openMenuId === row.id && menuPos && (
+            <div
+              className={styles.dropdown}
+              style={{ top: menuPos.top, left: menuPos.left }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`}
+                onClick={() => { setDeleteId(row.id); setOpenMenuId(null); }}>
+                Eliminar
+              </button>
               <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Editar</button>
               <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Más info</button>
             </div>
@@ -266,7 +302,7 @@ export default function InventarioPage() {
           <h1 className={styles.title}>General</h1>
           <p className={styles.subtitle}>Total productos: {filtered.length}</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>+ Agregar producto</Button>
+        <Button onClick={handleOpenModal}>+ Agregar producto</Button>
       </div>
 
       {loading ? (
@@ -304,100 +340,75 @@ export default function InventarioPage() {
         <form onSubmit={handleSubmit} className={formStyles.form}>
 
           <div className={formStyles.field}>
-            <input
-              className={`${formStyles.input} ${formErrors.nombre ? formStyles.inputError : ''}`}
-              type="text"
-              name="nombre"
-              placeholder="Nombre del producto"
-              value={formData.nombre}
-              onChange={handleChange}
-            />
+            <input className={`${formStyles.input} ${formErrors.nombre ? formStyles.inputError : ''}`}
+              type="text" name="nombre" placeholder="Nombre del producto"
+              value={formData.nombre} onChange={handleChange} />
             {formErrors.nombre && <p className={formStyles.error}>{formErrors.nombre}</p>}
           </div>
 
           <div className={formStyles.field}>
-            <input
-              className={formStyles.input}
-              type="text"
-              name="sku"
-              placeholder="SKU"
-              value={formData.sku}
-              onChange={handleChange}
-            />
+            <input className={formStyles.input} type="text" name="sku" placeholder="SKU (opcional)"
+              value={formData.sku} onChange={handleChange} />
           </div>
 
           <div className={formStyles.row}>
             <div className={formStyles.field}>
-              <input
-                className={formStyles.input}
-                type="text"
-                name="modelo"
-                placeholder="Modelo"
-                value={formData.modelo}
-                onChange={handleChange}
-              />
+              <input className={formStyles.input} type="text" name="modelo" placeholder="Modelo"
+                value={formData.modelo} onChange={handleChange} />
             </div>
             <div className={formStyles.field}>
-              <input
-                className={formStyles.input}
-                type="text"
-                name="color"
-                placeholder="Color"
-                value={formData.color}
-                onChange={handleChange}
-              />
+              <input className={formStyles.input} type="text" name="color" placeholder="Color"
+                value={formData.color} onChange={handleChange} />
             </div>
           </div>
 
           <div className={formStyles.field}>
-            <input
-              className={formStyles.input}
-              type="text"
-              name="codigo_barras"
-              placeholder="Código de barras"
-              value={formData.codigo_barras}
-              onChange={handleChange}
-            />
+            <input className={formStyles.input} type="text" name="codigo_barras" placeholder="Código de barras (opcional)"
+              value={formData.codigo_barras} onChange={handleChange} />
           </div>
 
           <div className={formStyles.row}>
             <div className={formStyles.field}>
-              <input
-                className={`${formStyles.input} ${formErrors.precio_adquisicion ? formStyles.inputError : ''}`}
-                type="number"
-                name="precio_adquisicion"
-                placeholder="Valor original"
-                min="0"
-                step="0.01"
-                value={formData.precio_adquisicion}
-                onChange={handleChange}
-              />
+              <input className={`${formStyles.input} ${formErrors.precio_adquisicion ? formStyles.inputError : ''}`}
+                type="number" name="precio_adquisicion" placeholder="Valor original"
+                min="0" step="0.01" value={formData.precio_adquisicion} onChange={handleChange} />
               {formErrors.precio_adquisicion && <p className={formStyles.error}>{formErrors.precio_adquisicion}</p>}
             </div>
             <div className={formStyles.field}>
-              <input
-                className={`${formStyles.input} ${formErrors.precio_venta_etiqueta ? formStyles.inputError : ''}`}
-                type="number"
-                name="precio_venta_etiqueta"
-                placeholder="Valor venta"
-                min="0"
-                step="0.01"
-                value={formData.precio_venta_etiqueta}
-                onChange={handleChange}
-              />
+              <input className={`${formStyles.input} ${formErrors.precio_venta_etiqueta ? formStyles.inputError : ''}`}
+                type="number" name="precio_venta_etiqueta" placeholder="Valor venta"
+                min="0" step="0.01" value={formData.precio_venta_etiqueta} onChange={handleChange} />
               {formErrors.precio_venta_etiqueta && <p className={formStyles.error}>{formErrors.precio_venta_etiqueta}</p>}
             </div>
           </div>
 
-          <div className={formStyles.actions}>
-            <Button type="button" variant="secondary" onClick={handleCloseModal} disabled={submitting}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Guardando...' : 'Agregar producto'}
-            </Button>
+          <div className={formStyles.row}>
+            <div className={formStyles.field}>
+              <select
+                className={`${formStyles.input} ${formStyles.select} ${formErrors.sucursal_id ? formStyles.inputError : ''}`}
+                name="sucursal_id"
+                value={formData.sucursal_id}
+                onChange={handleChange}
+                disabled={loadingSucursales}
+              >
+                <option value="">{loadingSucursales ? 'Cargando...' : 'Sucursal *'}</option>
+                {sucursales.map((s) => (
+                  <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_lugar}</option>
+                ))}
+              </select>
+              {formErrors.sucursal_id && <p className={formStyles.error}>{formErrors.sucursal_id}</p>}
+            </div>
+            <div className={formStyles.field}>
+              <input className={formStyles.input}
+                type="number" name="stock_inicial" placeholder="Stock inicial"
+                min="0" step="1" value={formData.stock_inicial} onChange={handleChange} />
+            </div>
           </div>
 
+          <div className={formStyles.actions}>
+            <Button type="button" variant="secondary" onClick={handleCloseModal} disabled={submitting}>Cancelar</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? 'Guardando...' : 'Agregar producto'}</Button>
+          </div>
         </form>
       </Dialog>
     </div>

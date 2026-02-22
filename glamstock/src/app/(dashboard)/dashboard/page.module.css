@@ -1,13 +1,94 @@
-.container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
+.header {
+  margin: 1.5rem 0 1rem;
 }
 
 .title {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: bold;
   color: #850E35;
-  text-align: center;
+  margin: 0 0 0.25rem;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #374151;
+  margin: 0;
+}
+
+.dots {
+  color: #6b7280;
+  letter-spacing: 2px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #f3f4f6;
+  border-top-color: #850E35;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  min-height: 130px;
+}
+
+.expandBtn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expandBtn:hover {
+  color: #850E35;
+}
+
+.cardNombre {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #850E35;
+  margin: 0 0 0.75rem;
+}
+
+.cardTotal {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .grid { grid-template-columns: 1fr; }
 }

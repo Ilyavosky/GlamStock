@@ -84,7 +84,14 @@ export class ProductosService {
           v.precio_venta_etiqueta,
           true, // etiqueta_generada hardcodeada a true
         ]);
-        variantes.push(varianteRows[0]);
+        const variante = varianteRows[0]; 
+        variantes.push(variante);
+
+      await client.query(
+          `INSERT INTO inventario_sucursal (id_variante, id_sucursal, stock_actual)
+           VALUES ($1, $2, $3)`,
+          [variante.id_variante, v.sucursal_id, v.stock_inicial ?? 0]
+        );
       }
 
       await client.query('COMMIT');
@@ -141,9 +148,12 @@ export class ProductosService {
         pm.id_producto_maestro, pm.sku, pm.nombre, pm.created_at,
         v.id_variante, v.codigo_barras, v.modelo, v.color,
         v.precio_adquisicion, v.precio_venta_etiqueta,
-        v.etiqueta_generada, v.created_at AS variante_created_at
+        v.etiqueta_generada, v.created_at AS variante_created_at,
+        s.nombre_lugar AS sucursal
       FROM productos_maestros pm
       LEFT JOIN variantes v ON pm.id_producto_maestro = v.id_producto_maestro
+      LEFT JOIN inventario_sucursal inv ON v.id_variante = inv.id_variante
+      LEFT JOIN sucursales s ON inv.id_sucursal = s.id_sucursal
       WHERE pm.id_producto_maestro IN (${ids})
       ORDER BY pm.created_at DESC, v.id_variante ASC
     `;
