@@ -1,4 +1,4 @@
-import { db } from '../../../../../db/client';
+import { db } from '@/lib/db/client';
 import { ProductosRepository } from '../repositories/productos.repository';
 import {
   ProductoMaestro,

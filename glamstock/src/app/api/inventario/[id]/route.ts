@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/modules/auth/middleware/jwt.middleware';
 import { AppError } from '@/lib/errors/app-error';
 import { idSchema } from '@/lib/validations/common.schemas';
-import { db } from '../../../../../../db/client';
+import { db } from '@/lib/db/client';
 import { z } from 'zod';
 
 const updateStockSchema = z.object({
