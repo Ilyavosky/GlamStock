@@ -5,6 +5,8 @@ import Table, { Column } from '@/components/ui/Table';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
+import EditProductoModal from './Editproducto';
+import InfoProductoModal from './Infoproducto';
 import styles from './page.module.css';
 import formStyles from './form.module.css';
 
@@ -58,15 +60,8 @@ interface FormErrors {
 }
 
 const FORM_INITIAL: FormData = {
-  nombre: '',
-  sku: '',
-  modelo: '',
-  color: '',
-  codigo_barras: '',
-  precio_adquisicion: '',
-  precio_venta_etiqueta: '',
-  sucursal_id: '',
-  stock_inicial: '0',
+  nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
+  precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '0',
 };
 
 const ITEMS_PER_PAGE = 20;
@@ -86,9 +81,14 @@ export default function InventarioPage() {
   const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
-
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [loadingSucursales, setLoadingSucursales] = useState(false);
+
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [infoId, setInfoId] = useState<number | null>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -103,11 +103,30 @@ export default function InventarioPage() {
       if (!res.ok) throw new Error('Error al cargar productos');
       const data = await res.json();
 
+      const resSucursales = await fetch('/api/inventario/sucursales', { credentials: 'include' });
+      const sucursalesData = resSucursales.ok ? await resSucursales.json() : { data: [] };
+      const listaSucursales: { id_sucursal: number }[] = sucursalesData.data || [];
+
+      const inventarios = await Promise.all(
+        listaSucursales.map(async (s) => {
+          const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
+          if (!r.ok) return [];
+          const d = await r.json();
+          return d.data || [];
+        })
+      );
+
+      const stockMap = new Map<number, number>();
+      inventarios.flat().forEach((item: { id_variante: number; stock_actual: number }) => {
+        const actual = stockMap.get(item.id_variante) ?? 0;
+        stockMap.set(item.id_variante, actual + item.stock_actual);
+      });
+
       const filas: ProductoFila[] = (data.productos || []).map((p: Producto) => ({
         id: p.id_producto_maestro,
         sku: p.sku,
         nombre: p.nombre,
-        totalStock: p.variantes.length,
+        totalStock: p.variantes.reduce((acc, v) => acc + (stockMap.get(v.id_variante) ?? 0), 0),
         valorOriginal: p.variantes.reduce((acc, v) => acc + Number(v.precio_adquisicion), 0),
         valorVenta: p.variantes.reduce((acc, v) => acc + Number(v.precio_venta_etiqueta), 0),
         sucursal: p.variantes[0]?.sucursal || '—',
@@ -184,16 +203,11 @@ export default function InventarioPage() {
     setFormErrors((prev) => ({ ...prev, [name]: err }));
   };
 
-  const handleOpenModal = () => {
-    setShowModal(true);
-    fetchSucursales();
-  };
+  const handleOpenModal = () => { setShowModal(true); fetchSucursales(); };
+  const handleCloseModal = () => { setShowModal(false); setFormData(FORM_INITIAL); setFormErrors({}); };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setFormData(FORM_INITIAL);
-    setFormErrors({});
-  };
+  const handleOpenEdit = (id: number) => { setEditId(id); setShowEditModal(true); setOpenMenuId(null); };
+  const handleOpenInfo = (id: number) => { setInfoId(id); setShowInfoModal(true); setOpenMenuId(null); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,17 +237,14 @@ export default function InventarioPage() {
           stock_inicial: Number(formData.stock_inicial) || 0,
         }],
       };
-
       const res = await fetch('/api/productos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al crear el producto');
-
       showToast('Producto agregado correctamente', 'success');
       handleCloseModal();
       fetchProductos();
@@ -269,17 +280,10 @@ export default function InventarioPage() {
             }}
           >•••</button>
           {openMenuId === row.id && menuPos && (
-            <div
-              className={styles.dropdown}
-              style={{ top: menuPos.top, left: menuPos.left }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`}
-                onClick={() => { setDeleteId(row.id); setOpenMenuId(null); }}>
-                Eliminar
-              </button>
-              <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Editar</button>
-              <button className={styles.dropdownItem} onClick={() => setOpenMenuId(null)}>Más info</button>
+            <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
+              <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={() => { setDeleteId(row.id); setOpenMenuId(null); }}>Eliminar</button>
+              <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar</button>
+              <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info</button>
             </div>
           )}
         </div>
@@ -338,19 +342,16 @@ export default function InventarioPage() {
 
       <Dialog open={showModal} onClose={handleCloseModal} title="Nuevo producto">
         <form onSubmit={handleSubmit} className={formStyles.form}>
-
           <div className={formStyles.field}>
             <input className={`${formStyles.input} ${formErrors.nombre ? formStyles.inputError : ''}`}
               type="text" name="nombre" placeholder="Nombre del producto"
               value={formData.nombre} onChange={handleChange} />
             {formErrors.nombre && <p className={formStyles.error}>{formErrors.nombre}</p>}
           </div>
-
           <div className={formStyles.field}>
             <input className={formStyles.input} type="text" name="sku" placeholder="SKU (opcional)"
               value={formData.sku} onChange={handleChange} />
           </div>
-
           <div className={formStyles.row}>
             <div className={formStyles.field}>
               <input className={formStyles.input} type="text" name="modelo" placeholder="Modelo"
@@ -361,12 +362,10 @@ export default function InventarioPage() {
                 value={formData.color} onChange={handleChange} />
             </div>
           </div>
-
           <div className={formStyles.field}>
             <input className={formStyles.input} type="text" name="codigo_barras" placeholder="Código de barras (opcional)"
               value={formData.codigo_barras} onChange={handleChange} />
           </div>
-
           <div className={formStyles.row}>
             <div className={formStyles.field}>
               <input className={`${formStyles.input} ${formErrors.precio_adquisicion ? formStyles.inputError : ''}`}
@@ -381,16 +380,10 @@ export default function InventarioPage() {
               {formErrors.precio_venta_etiqueta && <p className={formStyles.error}>{formErrors.precio_venta_etiqueta}</p>}
             </div>
           </div>
-
           <div className={formStyles.row}>
             <div className={formStyles.field}>
-              <select
-                className={`${formStyles.input} ${formStyles.select} ${formErrors.sucursal_id ? formStyles.inputError : ''}`}
-                name="sucursal_id"
-                value={formData.sucursal_id}
-                onChange={handleChange}
-                disabled={loadingSucursales}
-              >
+              <select className={`${formStyles.input} ${formStyles.select} ${formErrors.sucursal_id ? formStyles.inputError : ''}`}
+                name="sucursal_id" value={formData.sucursal_id} onChange={handleChange} disabled={loadingSucursales}>
                 <option value="">{loadingSucursales ? 'Cargando...' : 'Sucursal *'}</option>
                 {sucursales.map((s) => (
                   <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_lugar}</option>
@@ -399,18 +392,30 @@ export default function InventarioPage() {
               {formErrors.sucursal_id && <p className={formStyles.error}>{formErrors.sucursal_id}</p>}
             </div>
             <div className={formStyles.field}>
-              <input className={formStyles.input}
-                type="number" name="stock_inicial" placeholder="Stock inicial"
+              <input className={formStyles.input} type="number" name="stock_inicial" placeholder="Stock inicial"
                 min="0" step="1" value={formData.stock_inicial} onChange={handleChange} />
             </div>
           </div>
-
           <div className={formStyles.actions}>
             <Button type="button" variant="secondary" onClick={handleCloseModal} disabled={submitting}>Cancelar</Button>
             <Button type="submit" disabled={submitting}>{submitting ? 'Guardando...' : 'Agregar producto'}</Button>
           </div>
         </form>
       </Dialog>
+
+      <EditProductoModal
+        open={showEditModal}
+        productoId={editId}
+        onClose={() => { setShowEditModal(false); setEditId(null); }}
+        onSuccess={fetchProductos}
+        showToast={showToast}
+      />
+
+      <InfoProductoModal
+        open={showInfoModal}
+        productoId={infoId}
+        onClose={() => { setShowInfoModal(false); setInfoId(null); }}
+      />
     </div>
   );
 }

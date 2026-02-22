@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Table, { Column } from '@/components/ui/Table';
 import SearchInput from '@/components/ui/SearchInput';
 import StatsCard from './Statscard';
+import EditProductoModal from '../inventario/Editproducto';
+import InfoProductoModal from '../inventario/Infoproducto';
 import styles from './page.module.css';
 
 interface DashboardStats {
@@ -54,35 +56,49 @@ interface SucursalData {
 }
 
 export default function DashboardPage() {
-  const [stats, setStats]               = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  const [productos, setProductos]       = useState<ProductoFila[]>([]);
-  const [filtered, setFiltered]         = useState<ProductoFila[]>([]);
+  const [productos, setProductos] = useState<ProductoFila[]>([]);
+  const [filtered, setFiltered] = useState<ProductoFila[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
 
-  const [sucursales, setSucursales]     = useState<SucursalData[]>([]);
+  const [sucursales, setSucursales] = useState<SucursalData[]>([]);
   const [precioAdqMap, setPrecioAdqMap] = useState<Map<number, number>>(new Map());
   const [varianteSucursalMap, setVarianteSucursalMap] = useState<Map<number, string>>(new Map());
+  const [varianteToProductoMap, setVarianteToProductoMap] = useState<Map<number, number>>(new Map());
 
-  const [openMenuKey, setOpenMenuKey]   = useState<string | null>(null);
-  const [menuPos, setMenuPos]           = useState<{ top: number; left: number } | null>(null);
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
-  
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [infoId, setInfoId] = useState<number | null>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (msg: string, type: 'success' | 'error') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const openMenu = (e: React.MouseEvent<HTMLButtonElement>, key: string) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const dropdownHeight = 108;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow >= dropdownHeight
-      ? rect.bottom + 4
-      : rect.top - dropdownHeight - 4;
+    const top = spaceBelow >= dropdownHeight ? rect.bottom + 4 : rect.top - dropdownHeight - 4;
     setMenuPos({ top, left: rect.right - 120 });
     setOpenMenuKey(prev => (prev === key ? null : key));
   };
+
   const closeMenu = () => setOpenMenuKey(null);
 
-  
+  const handleOpenEdit = (id: number) => { setEditId(id); setShowEditModal(true); closeMenu(); };
+  const handleOpenInfo = (id: number) => { setInfoId(id); setShowInfoModal(true); closeMenu(); };
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/dashboard/stats', { credentials: 'include' });
@@ -94,7 +110,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  
   const fetchTodo = useCallback(async () => {
     setTableLoading(true);
     let adqMap = new Map<number, number>();
@@ -104,18 +119,42 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
 
+        const productoMap = new Map<number, number>();
         (data.productos || []).forEach((p: Producto) => {
-          p.variantes.forEach(v => adqMap.set(v.id_variante, Number(v.precio_adquisicion)));
+          p.variantes.forEach(v => {
+            adqMap.set(v.id_variante, Number(v.precio_adquisicion));
+            productoMap.set(v.id_variante, p.id_producto_maestro);
+          });
         });
         setPrecioAdqMap(adqMap);
+        setVarianteToProductoMap(productoMap);
+
+        const resSucursales = await fetch('/api/inventario/sucursales', { credentials: 'include' });
+        const sucursalesData = resSucursales.ok ? await resSucursales.json() : { data: [] };
+        const listaSucursales: { id_sucursal: number }[] = sucursalesData.data || [];
+
+        const inventariosPorSucursal = await Promise.all(
+          listaSucursales.map(async (s) => {
+            const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
+            if (!r.ok) return [];
+            const d = await r.json();
+            return d.data || [];
+          })
+        );
+
+        const stockMap = new Map<number, number>();
+        inventariosPorSucursal.flat().forEach((item: { id_variante: number; stock_actual: number }) => {
+          const actual = stockMap.get(item.id_variante) ?? 0;
+          stockMap.set(item.id_variante, actual + item.stock_actual);
+        });
 
         const filas: ProductoFila[] = (data.productos || []).map((p: Producto) => ({
-          id:            p.id_producto_maestro,
-          sku:           p.sku,
-          nombre:        p.nombre,
-          totalStock:    p.variantes.length,
+          id: p.id_producto_maestro,
+          sku: p.sku,
+          nombre: p.nombre,
+          totalStock: p.variantes.reduce((acc, v) => acc + (stockMap.get(v.id_variante) ?? 0), 0),
           valorOriginal: p.variantes.reduce((a, v) => a + Number(v.precio_adquisicion), 0),
-          valorVenta:    p.variantes.reduce((a, v) => a + Number(v.precio_venta_etiqueta), 0),
+          valorVenta: p.variantes.reduce((a, v) => a + Number(v.precio_venta_etiqueta), 0),
         }));
         setProductos(filas);
         setFiltered(filas);
@@ -123,6 +162,7 @@ export default function DashboardPage() {
     } finally {
       setTableLoading(false);
     }
+
     try {
       const res = await fetch('/api/inventario/sucursales', { credentials: 'include' });
       if (!res.ok) return;
@@ -130,6 +170,7 @@ export default function DashboardPage() {
       const lista = (data.data || []) as { id_sucursal: number; nombre_lugar: string; ubicacion: string }[];
 
       setSucursales(lista.map(s => ({ ...s, totalProductos: 0, inventario: [], loading: true })));
+
       const conInventario = await Promise.all(
         lista.map(async (s) => {
           try {
@@ -142,18 +183,16 @@ export default function DashboardPage() {
           }
         })
       );
+
       const vsMap = new Map<number, string>();
       conInventario.forEach(s => {
         s.inventario.forEach(item => {
-          if (!vsMap.has(item.id_variante)) {
-            vsMap.set(item.id_variante, s.nombre_lugar);
-          }
+          if (!vsMap.has(item.id_variante)) vsMap.set(item.id_variante, s.nombre_lugar);
         });
       });
       setVarianteSucursalMap(vsMap);
-
       setSucursales(conInventario);
-    } catch {  }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -161,7 +200,6 @@ export default function DashboardPage() {
     fetchTodo();
   }, [fetchStats, fetchTodo]);
 
-  
   const handleSearch = useCallback((term: string) => {
     if (!term.trim()) { setFiltered(productos); return; }
     const lower = term.toLowerCase();
@@ -172,21 +210,16 @@ export default function DashboardPage() {
 
   const valorInventario = productos.reduce((acc, p) => acc + p.valorVenta, 0);
 
-  
   const columnas: Column<ProductoFila>[] = [
-    { header: 'SKU',            key: 'sku' },
-    { header: 'Productos',      key: 'nombre' },
-    { header: 'Total Stock',    key: 'totalStock' },
+    { header: 'SKU', key: 'sku' },
+    { header: 'Productos', key: 'nombre' },
+    { header: 'Total Stock', key: 'totalStock' },
     { header: 'Valor original', key: 'valorOriginal', render: (r) => `$${r.valorOriginal.toLocaleString()}` },
-    { header: 'Valor venta',    key: 'valorVenta',    render: (r) => `$${r.valorVenta.toLocaleString()}` },
+    { header: 'Valor venta', key: 'valorVenta', render: (r) => `$${r.valorVenta.toLocaleString()}` },
     {
       header: 'Sucursal',
       key: 'sucursal',
-      render: (row) => {
-        const prod = productos.find(p => p.id === row.id);
-        if (!prod) return '—';
-        return varianteSucursalMap.size === 0 ? '...' : (varianteSucursalMap.get(row.id) ?? 'General');
-      },
+      render: (row) => varianteSucursalMap.size === 0 ? '...' : (varianteSucursalMap.get(row.id) ?? 'General'),
     },
     {
       header: 'Acciones',
@@ -197,14 +230,10 @@ export default function DashboardPage() {
           <div className={styles.menuWrapper}>
             <button className={styles.menuTrigger} onClick={(e) => openMenu(e, key)}>•••</button>
             {openMenuKey === key && menuPos && (
-              <div
-                className={styles.dropdown}
-                style={{ top: menuPos.top, left: menuPos.left }}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
                 <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={closeMenu}>Eliminar</button>
-                <button className={styles.dropdownItem} onClick={closeMenu}>Editar</button>
-                <button className={styles.dropdownItem} onClick={closeMenu}>Más info</button>
+                <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar</button>
+                <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info</button>
               </div>
             )}
           </div>
@@ -213,32 +242,20 @@ export default function DashboardPage() {
     },
   ];
 
-  
   return (
     <div onClick={closeMenu}>
-      {}
+      {toast && (
+        <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
+          {toast.msg}
+        </div>
+      )}
+
       <div className={styles.statsRow}>
-        <StatsCard
-          label="Productos únicos"
-          value={(stats?.estadisticas.total_productos_unicos ?? 0).toLocaleString()}
-          sub="en el sistema"
-          loading={statsLoading}
-        />
-        <StatsCard
-          label="Total variantes"
-          value={(stats?.estadisticas.total_variantes ?? 0).toLocaleString()}
-          sub="SKUs registrados"
-          loading={statsLoading}
-        />
-        <StatsCard
-          label="Valor del inventario"
-          value={tableLoading ? '——' : `$${valorInventario.toLocaleString('es-MX', { minimumFractionDigits: 0 })}`}
-          sub="precio venta etiqueta"
-          loading={tableLoading}
-        />
+        <StatsCard label="Productos únicos" value={(stats?.estadisticas.total_productos_unicos ?? 0).toLocaleString()} sub="en el sistema" loading={statsLoading} />
+        <StatsCard label="Total variantes" value={(stats?.estadisticas.total_variantes ?? 0).toLocaleString()} sub="SKUs registrados" loading={statsLoading} />
+        <StatsCard label="Valor del inventario" value={tableLoading ? '——' : `$${valorInventario.toLocaleString('es-MX', { minimumFractionDigits: 0 })}`} sub="precio venta etiqueta" loading={tableLoading} />
       </div>
 
-      {}
       <SearchInput placeholder="Buscar productos..." onSearch={handleSearch} />
 
       <div className={styles.header}>
@@ -254,7 +271,6 @@ export default function DashboardPage() {
         <Table headers={columnas} data={filtered} emptyMessage="Sin productos registrados" />
       )}
 
-      {}
       {sucursales.length > 0 && (
         <>
           <h2 className={styles.sectionTitle}>Por sucursal</h2>
@@ -303,14 +319,18 @@ export default function DashboardPage() {
                                 <div className={styles.menuWrapper}>
                                   <button className={styles.menuTrigger} onClick={(e) => openMenu(e, key)}>•••</button>
                                   {openMenuKey === key && menuPos && (
-                                    <div
-                                      className={styles.dropdown}
-                                      style={{ top: menuPos.top, left: menuPos.left }}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
                                       <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={closeMenu}>Eliminar</button>
-                                      <button className={styles.dropdownItem} onClick={closeMenu}>Editar</button>
-                                      <button className={styles.dropdownItem} onClick={closeMenu}>Más info</button>
+                                      <button className={styles.dropdownItem} onClick={() => {
+                                        const idProducto = varianteToProductoMap.get(item.id_variante);
+                                        if (idProducto) handleOpenEdit(idProducto);
+                                        closeMenu();
+                                      }}>Editar</button>
+                                      <button className={styles.dropdownItem} onClick={() => {
+                                        const idProducto = varianteToProductoMap.get(item.id_variante);
+                                        if (idProducto) handleOpenInfo(idProducto);
+                                        closeMenu();
+                                      }}>Más info</button>
                                     </div>
                                   )}
                                 </div>
@@ -327,6 +347,20 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      <EditProductoModal
+        open={showEditModal}
+        productoId={editId}
+        onClose={() => { setShowEditModal(false); setEditId(null); }}
+        onSuccess={fetchTodo}
+        showToast={showToast}
+      />
+
+      <InfoProductoModal
+        open={showInfoModal}
+        productoId={infoId}
+        onClose={() => { setShowInfoModal(false); setInfoId(null); }}
+      />
     </div>
   );
 }

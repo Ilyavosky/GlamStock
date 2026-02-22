@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import SucursalCard, { InventarioItem } from './SucursalCard';
+import EditProductoModal from '../inventario/Editproducto';
+import InfoProductoModal from '../inventario/Infoproducto';
 import styles from './page.module.css';
 
 interface Sucursal {
@@ -18,15 +20,32 @@ interface SucursalConInventario extends Sucursal {
   loadingInventario: boolean;
 }
 
+interface VarianteProducto {
+  id_variante: number;
+  id_producto_maestro: number;
+}
+
+interface Producto {
+  id_producto_maestro: number;
+  variantes: VarianteProducto[];
+}
+
 export default function SucursalesPage() {
   const [sucursales, setSucursales] = useState<SucursalConInventario[]>([]);
   const [filtered, setFiltered] = useState<SucursalConInventario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [varianteToProductoMap, setVarianteToProductoMap] = useState<Map<number, number>>(new Map());
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [infoId, setInfoId] = useState<number | null>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -48,10 +67,26 @@ export default function SucursalesPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/inventario/sucursales', { credentials: 'include' });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      const lista: Sucursal[] = data.data || [];
+      const [resSucursales, resProductos] = await Promise.all([
+        fetch('/api/inventario/sucursales', { credentials: 'include' }),
+        fetch('/api/productos?page=1&limit=100', { credentials: 'include' }),
+      ]);
+
+      if (!resSucursales.ok) throw new Error();
+
+      const dataSucursales = await resSucursales.json();
+      const lista: Sucursal[] = dataSucursales.data || [];
+
+      if (resProductos.ok) {
+        const dataProductos = await resProductos.json();
+        const map = new Map<number, number>();
+        (dataProductos.productos || []).forEach((p: Producto) => {
+          p.variantes.forEach((v: VarianteProducto) => {
+            map.set(v.id_variante, p.id_producto_maestro);
+          });
+        });
+        setVarianteToProductoMap(map);
+      }
 
       const initial: SucursalConInventario[] = lista.map((s) => ({
         ...s, inventario: [], loadingInventario: true,
@@ -90,9 +125,7 @@ export default function SucursalesPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/productos/${deleteTarget}`, {
-        method: 'DELETE', credentials: 'include',
-      });
+      const res = await fetch(`/api/productos/${deleteTarget}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) {
         const d = await res.json();
         throw new Error(d.error || 'Error al eliminar');
@@ -106,6 +139,20 @@ export default function SucursalesPage() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleOpenEdit = (idVariante: number) => {
+    const idProducto = varianteToProductoMap.get(idVariante);
+    if (!idProducto) { showToast('No se encontró el producto', 'error'); return; }
+    setEditId(idProducto);
+    setShowEditModal(true);
+  };
+
+  const handleOpenInfo = (idVariante: number) => {
+    const idProducto = varianteToProductoMap.get(idVariante);
+    if (!idProducto) { showToast('No se encontró el producto', 'error'); return; }
+    setInfoId(idProducto);
+    setShowInfoModal(true);
   };
 
   return (
@@ -149,6 +196,8 @@ export default function SucursalesPage() {
               inventario={s.inventario}
               loading={s.loadingInventario}
               onDelete={(idVariante) => setDeleteTarget(idVariante)}
+              onEdit={handleOpenEdit}
+              onInfo={handleOpenInfo}
             />
           ))}
         </div>
@@ -158,13 +207,9 @@ export default function SucursalesPage() {
         <div className={styles.modalOverlay} onClick={() => !deleting && setDeleteTarget(null)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Eliminar producto</h2>
-            <p className={styles.modalText}>
-              ¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.
-            </p>
+            <p className={styles.modalText}>¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.</p>
             <div className={styles.modalActions}>
-              <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-                Cancelar
-              </Button>
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancelar</Button>
               <Button variant="danger" onClick={handleDelete} disabled={deleting}>
                 {deleting ? 'Eliminando...' : 'Eliminar'}
               </Button>
@@ -172,6 +217,20 @@ export default function SucursalesPage() {
           </div>
         </div>
       )}
+
+      <EditProductoModal
+        open={showEditModal}
+        productoId={editId}
+        onClose={() => { setShowEditModal(false); setEditId(null); }}
+        onSuccess={fetchAll}
+        showToast={showToast}
+      />
+
+      <InfoProductoModal
+        open={showInfoModal}
+        productoId={infoId}
+        onClose={() => { setShowInfoModal(false); setInfoId(null); }}
+      />
     </div>
   );
 }
