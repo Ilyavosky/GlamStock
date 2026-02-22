@@ -2,6 +2,7 @@ import { SucursalesRepository } from '../repositories/sucursales.repository';
 import { Sucursal, CreateSucursalInput, UpdateSucursalInput } from '../types/sucursales.types';
 import { NotFoundError, ValidationError } from '@/lib/errors/app-error';
 import { createSucursalSchema, updateSucursalSchema } from '../schemas/sucursales.schema';
+import { InventarioDetallado } from '@/modules/inventario/types/inventario.types';
 
 export class SucursalesService {
 
@@ -73,5 +74,33 @@ export class SucursalesService {
     static async toggleActivo(id: number): Promise<Sucursal> {
         const sucursal = await SucursalesService.getSucursalById(id);
         return SucursalesRepository.update(id, { activo: !sucursal.activo });
+    }
+
+    static async getInventarioByIdWithFilters(
+    id: number,
+    filtros: {
+        sku?: string;
+        nombre?: string;
+        min_stock?: number;
+        max_stock?: number;
+    }
+        ): Promise<InventarioDetallado[]> {
+    await SucursalesService.getSucursalById(id);
+
+    if (filtros.min_stock !== undefined && filtros.max_stock !== undefined) {
+        if (filtros.min_stock > filtros.max_stock) {
+            throw new ValidationError('El stock mínimo no puede ser mayor al stock máximo');
+        }
+    }
+
+    if (filtros.min_stock !== undefined && filtros.min_stock < 0) {
+        throw new ValidationError('El stock mínimo no puede ser negativo');
+    }
+
+    if (filtros.max_stock !== undefined && filtros.max_stock < 0) {
+        throw new ValidationError('El stock máximo no puede ser negativo');
+    }
+
+    return SucursalesRepository.findByIdWithFilters(id, filtros);
     }
 }
