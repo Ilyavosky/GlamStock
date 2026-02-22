@@ -1,0 +1,46 @@
+.card {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #850E35;
+  margin: 0;
+  line-height: 1;
+}
+
+.sub {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.skeleton .value {
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+  color: transparent;
+  animation: pulse 1.5s ease-in-out infinite;
+  width: 60%;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
