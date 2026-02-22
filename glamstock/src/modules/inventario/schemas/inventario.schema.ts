@@ -10,6 +10,13 @@ export const MOTIVOS_VALIDOS = [
 
 export type MotivoValido = typeof MOTIVOS_VALIDOS[number];
 
+export const inventarioQuerySchema = z.object({
+    sku: z.string().optional(),
+    nombre: z.string().optional(),
+    min_stock: z.coerce.number().int().nonnegative('El stock mínimo no puede ser negativo').optional(),
+    max_stock: z.coerce.number().int().nonnegative('El stock máximo no puede ser negativo').optional(),
+});
+
 export const ajusteStockSchema = z.object({
   id_variante: idSchema,
   id_sucursal: idSchema,
@@ -47,3 +54,4 @@ export type AjusteStockDTO = z.infer<typeof ajusteStockSchema>;
 export type RegistrarBajaDTO = z.infer<typeof registrarBajaSchema>;
 export type AjustarInventarioDTO = z.infer<typeof ajustarInventarioSchema>;
 export type AjusteInventarioApiDTO = z.infer<typeof ajusteInventarioApiSchema>;
+export type InventarioQueryDTO = z.infer<typeof inventarioQuerySchema>;
