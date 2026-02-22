@@ -3,7 +3,7 @@ import { CreateVarianteInput } from '../types/variantes.types';
 
 // 1. Variante (El item físico)
 export const varianteSchema = z.object({
-  codigo_barras: z.string().min(3).max(100),
+  codigo_barras: z.string().min(3).max(100).optional(),
   modelo: z.string().max(100).optional().nullable(),
   color: z.string().max(50).optional().nullable(),
   precio_adquisicion: z.coerce.number().nonnegative('El costo no puede ser negativo'),

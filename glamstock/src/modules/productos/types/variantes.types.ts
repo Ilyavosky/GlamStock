@@ -1,8 +1,8 @@
 export interface Variante {
   id_variante: number;
   id_producto_maestro: number;
-  codigo_barras: string;
-  modelo: string | null;
+  codigo_barras?: string;
+  modelo?: string | null;
   color: string | null;
   precio_adquisicion: number;
   precio_venta_etiqueta: number;

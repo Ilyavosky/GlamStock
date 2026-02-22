@@ -35,14 +35,14 @@ export class ProductosService {
       }
 
      return {
-       ...v,
-       modelo: v.modelo ? v.modelo.trim().toUpperCase() : null,
-       color: v.color ? v.color.trim().toUpperCase() : null,
-       codigo_barras: v.codigo_barras
-         ? v.codigo_barras.trim()
-         : `CB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-       etiqueta_generada: true,
-      };
+      ...v,
+      modelo: v.modelo ? v.modelo.trim().toUpperCase() : null,
+      color: v.color ? v.color.trim().toUpperCase() : null,
+      codigo_barras: v.codigo_barras
+        ? v.codigo_barras.trim()
+        : `CB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+  etiqueta_generada: true,
+};
     });
 
     const productoNormalizado: CreateProductoCompletoInput = {
