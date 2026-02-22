@@ -156,7 +156,7 @@ export class InventarioService {
   }
 
   static async executarAjustePorCantidad(data: AjustePorCantidadInput): Promise<{ stock_nuevo: number; id_transaccion: number }> {
-    // 1. Buscar id_motivo por descripcion
+    // 1. Buscar id_motivo por descripcion (fuera de la transacción, es solo lectura)
     const motivoQuery = `
       SELECT id_motivo FROM motivos_transaccion WHERE descripcion = $1;
     `;
@@ -167,40 +167,77 @@ export class InventarioService {
     }
     const id_motivo: number = motivoRows[0].id_motivo;
 
-    // 2. Actualizar stock atómicamente (lanza ValidationError si stock insuficiente)
-    const stockActualizado = await InventarioRepository.updateStock(
-      data.id_variante,
-      data.id_sucursal,
-      data.cantidad
-    );
+    // 2. Transacción atómica: actualizar stock + registrar auditoría
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
 
-    // 3. Registrar la operación en ventas_bajas para auditoría
-    const cantidadAbsoluta = Math.abs(data.cantidad);
-    const transaccionQuery = `
-      INSERT INTO ventas_bajas (id_variante, id_sucursal, id_motivo, id_usuario, cantidad, precio_venta_final)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id_transaccion;
-    `;
-    const { rows: transRows } = await db.query(transaccionQuery, [
-      data.id_variante,
-      data.id_sucursal,
-      id_motivo,
-      data.id_usuario,
-      cantidadAbsoluta,
-      0,
-    ]);
+      // 2a. Obtener stock actual con bloqueo de fila (FOR UPDATE) para evitar race conditions
+      const checkQuery = `
+        SELECT stock_actual
+        FROM inventario_sucursal
+        WHERE id_variante = $1 AND id_sucursal = $2
+        FOR UPDATE;
+      `;
+      const { rows: stockRows } = await client.query(checkQuery, [data.id_variante, data.id_sucursal]);
 
-    // 4. Log de auditoría
-    const tipo = data.cantidad > 0 ? 'ENTRADA' : 'SALIDA';
-    console.log(
-      `[INVENTARIO] ${tipo} | variante=${data.id_variante} sucursal=${data.id_sucursal} ` +
-      `cantidad=${data.cantidad} motivo="${data.motivo}" usuario=${data.id_usuario} ` +
-      `stock_nuevo=${stockActualizado.stock_actual} transaccion=${transRows[0].id_transaccion}`
-    );
+      if (stockRows.length === 0) {
+        throw new NotFoundError('Registro de inventario no encontrado');
+      }
 
-    return {
-      stock_nuevo: stockActualizado.stock_actual,
-      id_transaccion: transRows[0].id_transaccion,
-    };
+      const currentStock = stockRows[0].stock_actual;
+      const newStock = currentStock + data.cantidad;
+
+      if (newStock < 0) {
+        throw new ValidationError(
+          `Stock insuficiente. Actual: ${currentStock}, Solicitado: ${Math.abs(data.cantidad)}`
+        );
+      }
+
+      // 2b. Actualizar stock
+      const updateQuery = `
+        UPDATE inventario_sucursal
+        SET stock_actual = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id_variante = $2 AND id_sucursal = $3
+        RETURNING stock_actual;
+      `;
+      const { rows: updatedRows } = await client.query(updateQuery, [newStock, data.id_variante, data.id_sucursal]);
+
+      // 2c. Registrar la operación en ventas_bajas para auditoría
+      const cantidadAbsoluta = Math.abs(data.cantidad);
+      const transaccionQuery = `
+        INSERT INTO ventas_bajas (id_variante, id_sucursal, id_motivo, id_usuario, cantidad, precio_venta_final)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id_transaccion;
+      `;
+      const { rows: transRows } = await client.query(transaccionQuery, [
+        data.id_variante,
+        data.id_sucursal,
+        id_motivo,
+        data.id_usuario,
+        cantidadAbsoluta,
+        0,
+      ]);
+
+      await client.query('COMMIT');
+
+      // 3. Log de auditoría (fuera de la transacción, es solo logging)
+      const tipo = data.cantidad > 0 ? 'ENTRADA' : 'SALIDA';
+      console.log(
+        `[INVENTARIO] ${tipo} | variante=${data.id_variante} sucursal=${data.id_sucursal} ` +
+        `cantidad=${data.cantidad} motivo="${data.motivo}" usuario=${data.id_usuario} ` +
+        `stock_nuevo=${updatedRows[0].stock_actual} transaccion=${transRows[0].id_transaccion}`
+      );
+
+      return {
+        stock_nuevo: updatedRows[0].stock_actual,
+        id_transaccion: transRows[0].id_transaccion,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
