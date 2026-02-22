@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import EditProductoModal from './Editproducto';
 import InfoProductoModal from './Infoproducto';
+import NuevoProductoForm, { FormData, FormErrors, Sucursal, validateField, buildFormErrors } from './Nuevoproducto';
 import styles from './page.module.css';
 import formStyles from './form.module.css';
 
@@ -34,34 +35,9 @@ interface ProductoFila {
   sucursal: string;
 }
 
-interface Sucursal {
-  id_sucursal: number;
-  nombre_lugar: string;
-  ubicacion: string;
-}
-
-interface FormData {
-  nombre: string;
-  sku: string;
-  modelo: string;
-  color: string;
-  codigo_barras: string;
-  precio_adquisicion: string;
-  precio_venta_etiqueta: string;
-  sucursal_id: string;
-  stock_inicial: string;
-}
-
-interface FormErrors {
-  nombre?: string;
-  precio_adquisicion?: string;
-  precio_venta_etiqueta?: string;
-  sucursal_id?: string;
-}
-
 const FORM_INITIAL: FormData = {
   nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
-  precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '0',
+  precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '',
 };
 
 const ITEMS_PER_PAGE = 20;
@@ -75,18 +51,15 @@ export default function InventarioPage() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteNombre, setDeleteNombre] = useState('');
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [loadingSucursales, setLoadingSucursales] = useState(false);
-
   const [editId, setEditId] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
   const [infoId, setInfoId] = useState<number | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -99,13 +72,16 @@ export default function InventarioPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/productos?page=1&limit=100', { credentials: 'include' });
-      if (!res.ok) throw new Error('Error al cargar productos');
-      const data = await res.json();
+      const [resProductos, resSucursales] = await Promise.all([
+        fetch('/api/productos?page=1&limit=100', { credentials: 'include' }),
+        fetch('/api/inventario/sucursales', { credentials: 'include' }),
+      ]);
+      if (!resProductos.ok) throw new Error('Error al cargar productos');
+      const data = await resProductos.json();
 
-      const resSucursales = await fetch('/api/inventario/sucursales', { credentials: 'include' });
       const sucursalesData = resSucursales.ok ? await resSucursales.json() : { data: [] };
-      const listaSucursales: { id_sucursal: number }[] = sucursalesData.data || [];
+      const listaSucursales: Sucursal[] = sucursalesData.data || [];
+      setSucursales(listaSucursales);
 
       const inventarios = await Promise.all(
         listaSucursales.map(async (s) => {
@@ -118,8 +94,7 @@ export default function InventarioPage() {
 
       const stockMap = new Map<number, number>();
       inventarios.flat().forEach((item: { id_variante: number; stock_actual: number }) => {
-        const actual = stockMap.get(item.id_variante) ?? 0;
-        stockMap.set(item.id_variante, actual + item.stock_actual);
+        stockMap.set(item.id_variante, (stockMap.get(item.id_variante) ?? 0) + item.stock_actual);
       });
 
       const filas: ProductoFila[] = (data.productos || []).map((p: Producto) => ({
@@ -141,20 +116,6 @@ export default function InventarioPage() {
     }
   }, []);
 
-  const fetchSucursales = useCallback(async () => {
-    setLoadingSucursales(true);
-    try {
-      const res = await fetch('/api/inventario/sucursales', { credentials: 'include' });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setSucursales(data.data || []);
-    } catch {
-      setSucursales([]);
-    } finally {
-      setLoadingSucursales(false);
-    }
-  }, []);
-
   useEffect(() => { fetchProductos(); }, [fetchProductos]);
 
   const handleSearch = useCallback((term: string) => {
@@ -165,6 +126,28 @@ export default function InventarioPage() {
       p.nombre.toLowerCase().includes(lower) || p.sku.toLowerCase().includes(lower)
     ));
   }, [productos]);
+
+  const handleOpenModal = () => {
+    setFormData(FORM_INITIAL);
+    setFormErrors({});
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    if (!submitting) { setShowModal(false); setFormErrors({}); }
+  };
+
+  const handleOpenEdit = (id: number) => {
+    setEditId(id);
+    setShowEditModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleOpenInfo = (id: number) => {
+    setInfoId(id);
+    setShowInfoModal(true);
+    setOpenMenuId(null);
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -177,58 +160,28 @@ export default function InventarioPage() {
       showToast('Error al eliminar el producto', 'error');
     } finally {
       setDeleteId(null);
+      setDeleteNombre('');
     }
-  };
-
-  const validateField = (name: keyof FormData, value: string): string | undefined => {
-    if (name === 'nombre' && !value.trim()) return 'El nombre es obligatorio';
-    if (name === 'precio_adquisicion') {
-      if (!value) return 'El precio de adquisición es obligatorio';
-      if (isNaN(Number(value)) || Number(value) < 0) return 'Debe ser un número positivo';
-    }
-    if (name === 'precio_venta_etiqueta') {
-      if (!value) return 'El precio de venta es obligatorio';
-      if (isNaN(Number(value)) || Number(value) < 0) return 'Debe ser un número positivo';
-      if (formData.precio_adquisicion && Number(value) < Number(formData.precio_adquisicion))
-        return 'Debe ser mayor al precio de adquisición';
-    }
-    if (name === 'sucursal_id' && !value) return 'Debes seleccionar una sucursal';
-    return undefined;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    const err = validateField(name as keyof FormData, value);
-    setFormErrors((prev) => ({ ...prev, [name]: err }));
+    setFormErrors((prev) => ({ ...prev, [name]: validateField(name as keyof FormData, value, formData.precio_adquisicion) }));
   };
-
-  const handleOpenModal = () => { setShowModal(true); fetchSucursales(); };
-  const handleCloseModal = () => { setShowModal(false); setFormData(FORM_INITIAL); setFormErrors({}); };
-
-  const handleOpenEdit = (id: number) => { setEditId(id); setShowEditModal(true); setOpenMenuId(null); };
-  const handleOpenInfo = (id: number) => { setInfoId(id); setShowInfoModal(true); setOpenMenuId(null); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors: FormErrors = {};
-    const nombreErr = validateField('nombre', formData.nombre);
-    const precioAdqErr = validateField('precio_adquisicion', formData.precio_adquisicion);
-    const precioVentaErr = validateField('precio_venta_etiqueta', formData.precio_venta_etiqueta);
-    const sucursalErr = validateField('sucursal_id', formData.sucursal_id);
-    if (nombreErr) errors.nombre = nombreErr;
-    if (precioAdqErr) errors.precio_adquisicion = precioAdqErr;
-    if (precioVentaErr) errors.precio_venta_etiqueta = precioVentaErr;
-    if (sucursalErr) errors.sucursal_id = sucursalErr;
+    const errors = buildFormErrors(formData, true);
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setSubmitting(true);
     try {
       const body = {
         nombre: formData.nombre.trim(),
-        ...(formData.sku.trim() && { sku: formData.sku.trim() }),
+        sku: formData.sku.trim() || undefined,
         variantes: [{
-          codigo_barras: formData.codigo_barras.trim() || `CB-${Date.now()}`,
+          ...(formData.codigo_barras.trim() && { codigo_barras: formData.codigo_barras.trim() }),
           ...(formData.modelo.trim() && { modelo: formData.modelo.trim() }),
           ...(formData.color.trim() && { color: formData.color.trim() }),
           precio_adquisicion: Number(formData.precio_adquisicion),
@@ -280,8 +233,12 @@ export default function InventarioPage() {
             }}
           >•••</button>
           {openMenuId === row.id && menuPos && (
-            <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
-              <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={() => { setDeleteId(row.id); setOpenMenuId(null); }}>Eliminar</button>
+            <div
+              className={styles.dropdown}
+              style={{ top: menuPos.top, left: menuPos.left }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={() => { setDeleteId(row.id); setDeleteNombre(row.nombre); setOpenMenuId(null); }}>Eliminar</button>
               <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar</button>
               <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info</button>
             </div>
@@ -327,80 +284,26 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {deleteId !== null && (
-        <div className={styles.modalOverlay} onClick={() => setDeleteId(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>Eliminar producto</h2>
-            <p className={styles.modalText}>¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.</p>
-            <div className={styles.modalActions}>
-              <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
-              <Button variant="danger" onClick={handleDelete}>Eliminar</Button>
-            </div>
-          </div>
+      <Dialog open={deleteId !== null} onClose={() => { setDeleteId(null); setDeleteNombre(''); }} title="Eliminar producto">
+        <p className={formStyles.modalText}>
+          ¿Estás seguro que deseas eliminar <strong style={{ color: '#111827' }}>{deleteNombre}</strong>? Esta acción no se puede deshacer.
+        </p>
+        <div className={formStyles.modalActions}>
+          <Button variant="secondary" onClick={() => { setDeleteId(null); setDeleteNombre(''); }}>Cancelar</Button>
+          <Button variant="danger" onClick={handleDelete}>Eliminar</Button>
         </div>
-      )}
+      </Dialog>
 
       <Dialog open={showModal} onClose={handleCloseModal} title="Nuevo producto">
-        <form onSubmit={handleSubmit} className={formStyles.form}>
-          <div className={formStyles.field}>
-            <input className={`${formStyles.input} ${formErrors.nombre ? formStyles.inputError : ''}`}
-              type="text" name="nombre" placeholder="Nombre del producto"
-              value={formData.nombre} onChange={handleChange} />
-            {formErrors.nombre && <p className={formStyles.error}>{formErrors.nombre}</p>}
-          </div>
-          <div className={formStyles.field}>
-            <input className={formStyles.input} type="text" name="sku" placeholder="SKU (opcional)"
-              value={formData.sku} onChange={handleChange} />
-          </div>
-          <div className={formStyles.row}>
-            <div className={formStyles.field}>
-              <input className={formStyles.input} type="text" name="modelo" placeholder="Modelo"
-                value={formData.modelo} onChange={handleChange} />
-            </div>
-            <div className={formStyles.field}>
-              <input className={formStyles.input} type="text" name="color" placeholder="Color"
-                value={formData.color} onChange={handleChange} />
-            </div>
-          </div>
-          <div className={formStyles.field}>
-            <input className={formStyles.input} type="text" name="codigo_barras" placeholder="Código de barras (opcional)"
-              value={formData.codigo_barras} onChange={handleChange} />
-          </div>
-          <div className={formStyles.row}>
-            <div className={formStyles.field}>
-              <input className={`${formStyles.input} ${formErrors.precio_adquisicion ? formStyles.inputError : ''}`}
-                type="number" name="precio_adquisicion" placeholder="Valor original"
-                min="0" step="0.01" value={formData.precio_adquisicion} onChange={handleChange} />
-              {formErrors.precio_adquisicion && <p className={formStyles.error}>{formErrors.precio_adquisicion}</p>}
-            </div>
-            <div className={formStyles.field}>
-              <input className={`${formStyles.input} ${formErrors.precio_venta_etiqueta ? formStyles.inputError : ''}`}
-                type="number" name="precio_venta_etiqueta" placeholder="Valor venta"
-                min="0" step="0.01" value={formData.precio_venta_etiqueta} onChange={handleChange} />
-              {formErrors.precio_venta_etiqueta && <p className={formStyles.error}>{formErrors.precio_venta_etiqueta}</p>}
-            </div>
-          </div>
-          <div className={formStyles.row}>
-            <div className={formStyles.field}>
-              <select className={`${formStyles.input} ${formStyles.select} ${formErrors.sucursal_id ? formStyles.inputError : ''}`}
-                name="sucursal_id" value={formData.sucursal_id} onChange={handleChange} disabled={loadingSucursales}>
-                <option value="">{loadingSucursales ? 'Cargando...' : 'Sucursal *'}</option>
-                {sucursales.map((s) => (
-                  <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_lugar}</option>
-                ))}
-              </select>
-              {formErrors.sucursal_id && <p className={formStyles.error}>{formErrors.sucursal_id}</p>}
-            </div>
-            <div className={formStyles.field}>
-              <input className={formStyles.input} type="number" name="stock_inicial" placeholder="Stock inicial"
-                min="0" step="1" value={formData.stock_inicial} onChange={handleChange} />
-            </div>
-          </div>
-          <div className={formStyles.actions}>
-            <Button type="button" variant="secondary" onClick={handleCloseModal} disabled={submitting}>Cancelar</Button>
-            <Button type="submit" disabled={submitting}>{submitting ? 'Guardando...' : 'Agregar producto'}</Button>
-          </div>
-        </form>
+        <NuevoProductoForm
+          formData={formData}
+          formErrors={formErrors}
+          sucursales={sucursales}
+          submitting={submitting}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseModal}
+        />
       </Dialog>
 
       <EditProductoModal

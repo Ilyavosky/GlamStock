@@ -26,6 +26,9 @@ export default function Sidebar() {
         <Link href="/sucursales" className={pathname === '/sucursales' ? styles.linkActive : styles.link}>
           Sucursales
         </Link>
+        <Link href="/ventas" className={pathname === '/ventas' ? styles.linkActive : styles.link}>
+          Ventas
+        </Link>
       </nav>
 
       <button className={styles.logoutBtn} onClick={handleLogout} title="Cerrar sesión">

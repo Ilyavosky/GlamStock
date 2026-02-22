@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import Button from '@/components/ui/Button';
+import styles from './Infoproducto.module.css';
+import formStyles from './form.module.css';
 
 interface VarianteDetalle {
   id_variante: number;
@@ -31,56 +33,6 @@ interface InfoProductoModalProps {
   onClose: () => void;
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  color: '#6b7280',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  margin: '0 0 0.2rem',
-};
-
-const valueStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#111827',
-  margin: 0,
-  fontWeight: 500,
-};
-
-const fieldStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.1rem',
-};
-
-const rowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: '1rem',
-};
-
-const sectionStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-};
-
-const dividerStyle: React.CSSProperties = {
-  border: 'none',
-  borderTop: '1px solid #f3f4f6',
-  margin: '0.5rem 0',
-};
-
-const badgeStyle: React.CSSProperties = {
-  display: 'inline-block',
-  background: '#fdf2f5',
-  color: '#850E35',
-  borderRadius: '0.375rem',
-  padding: '0.2rem 0.6rem',
-  fontSize: '0.8rem',
-  fontWeight: 600,
-};
-
 export default function InfoProductoModal({ open, productoId, onClose }: InfoProductoModalProps) {
   const [loading, setLoading] = useState(false);
   const [producto, setProducto] = useState<ProductoCompleto | null>(null);
@@ -96,22 +48,16 @@ export default function InfoProductoModal({ open, productoId, onClose }: InfoPro
 
       const resSucursales = await fetch('/api/inventario/sucursales', { credentials: 'include' });
       if (!resSucursales.ok) return;
-      const sucData = await resSucursales.json();
-      const sucursales: { id_sucursal: number; nombre_lugar: string }[] = sucData.data || [];
+      const { data: sucursales = [] } = await resSucursales.json();
+      const varianteIds = new Set(data.variantes.map((v) => v.id_variante));
 
       const infoList: InventarioInfo[] = [];
       for (const s of sucursales) {
         const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
         if (!r.ok) continue;
-        const d = await r.json();
-        const items = d.data || [];
-        const varianteIds = new Set(data.variantes.map(v => v.id_variante));
-        const encontrado = items.find((item: { id_variante: number; stock_actual: number }) =>
-          varianteIds.has(item.id_variante)
-        );
-        if (encontrado) {
-          infoList.push({ sucursal: s.nombre_lugar, stock_actual: encontrado.stock_actual });
-        }
+        const { data: items = [] } = await r.json();
+        const found = items.find((item: { id_variante: number; stock_actual: number }) => varianteIds.has(item.id_variante));
+        if (found) infoList.push({ sucursal: s.nombre_lugar, stock_actual: found.stock_actual });
       }
       setInventarioInfo(infoList);
     } finally {
@@ -133,83 +79,80 @@ export default function InfoProductoModal({ open, productoId, onClose }: InfoPro
   return (
     <Dialog open={open} onClose={onClose} title="Información del producto">
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-          Cargando...
-        </div>
+        <p className={formStyles.loadingText}>Cargando...</p>
       ) : !producto ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-          No se encontró el producto
-        </div>
+        <p className={formStyles.loadingText}>No se encontró el producto</p>
       ) : (
-        <div style={sectionStyle}>
+        <div className={styles.section}>
 
-          <div style={rowStyle}>
-            <div style={fieldStyle}>
-              <p style={labelStyle}>Nombre</p>
-              <p style={valueStyle}>{producto.nombre}</p>
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <p className={styles.label}>Nombre</p>
+              <p className={styles.value}>{producto.nombre}</p>
             </div>
-            <div style={fieldStyle}>
-              <p style={labelStyle}>SKU</p>
-              <p style={valueStyle}>{producto.sku}</p>
-            </div>
-          </div>
-
-          <hr style={dividerStyle} />
-
-          <div style={rowStyle}>
-            <div style={fieldStyle}>
-              <p style={labelStyle}>Modelo</p>
-              <p style={valueStyle}>{variante?.modelo || '—'}</p>
-            </div>
-            <div style={fieldStyle}>
-              <p style={labelStyle}>Color</p>
-              <p style={valueStyle}>{variante?.color || '—'}</p>
+            <div className={styles.field}>
+              <p className={styles.label}>SKU</p>
+              <p className={styles.value}>{producto.sku}</p>
             </div>
           </div>
 
-          <div style={fieldStyle}>
-            <p style={labelStyle}>Código de barras</p>
-            <p style={valueStyle}>{variante?.codigo_barras || '—'}</p>
+          <hr className={styles.divider} />
+
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <p className={styles.label}>Modelo</p>
+              <p className={styles.value}>{variante?.modelo || '—'}</p>
+            </div>
+            <div className={styles.field}>
+              <p className={styles.label}>Color</p>
+              <p className={styles.value}>{variante?.color || '—'}</p>
+            </div>
           </div>
 
-          <hr style={dividerStyle} />
+          <div className={styles.field}>
+            <p className={styles.label}>Código de barras</p>
+            <p className={styles.value}>{variante?.codigo_barras || '—'}</p>
+          </div>
 
-          <div style={rowStyle}>
-            <div style={fieldStyle}>
-              <p style={labelStyle}>Valor original</p>
-              <p style={valueStyle}>
+          <hr className={styles.divider} />
+
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <p className={styles.label}>Valor original</p>
+              <p className={styles.value}>
                 {variante ? `$${Number(variante.precio_adquisicion).toLocaleString()}` : '—'}
               </p>
             </div>
-            <div style={fieldStyle}>
-              <p style={labelStyle}>Valor venta</p>
-              <p style={valueStyle}>
+            <div className={styles.field}>
+              <p className={styles.label}>Valor venta</p>
+              <p className={styles.value}>
                 {variante ? `$${Number(variante.precio_venta_etiqueta).toLocaleString()}` : '—'}
               </p>
             </div>
           </div>
 
-          <hr style={dividerStyle} />
+          <hr className={styles.divider} />
 
-          <div style={fieldStyle}>
-            <p style={labelStyle}>Sucursal / stock</p>
+          <div className={styles.field}>
+            <p className={styles.label}>Sucursal / stock</p>
             {inventarioInfo.length === 0 ? (
-              <p style={valueStyle}>Sin inventario registrado</p>
+              <p className={styles.value}>Sin inventario registrado</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
+              <div className={styles.stockList}>
                 {inventarioInfo.map((info, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={valueStyle}>{info.sucursal}</p>
-                    <span style={badgeStyle}>{info.stock_actual} piezas</span>
+                  <div key={i} className={styles.stockRow}>
+                    <p className={styles.value}>{info.sucursal}</p>
+                    <span className={styles.badge}>{info.stock_actual} piezas</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <div className={styles.actions}>
             <Button variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
+
         </div>
       )}
     </Dialog>
