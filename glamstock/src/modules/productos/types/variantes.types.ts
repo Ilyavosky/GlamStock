@@ -26,6 +26,7 @@ export interface CreateVarianteInput {
 
 // DTOs para actualizar variante de producto
 export interface UpdateVarianteInput {
+  sku_variante?: string;
   codigo_barras?: string;
   modelo?: string | null;
   color?: string | null;
