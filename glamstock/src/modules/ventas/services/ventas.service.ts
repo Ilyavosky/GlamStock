@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/client';
 import { VentasRepository } from '../repositories/ventas.repository';
 import { InventarioRepository } from '@/modules/inventario/repositories/inventario.repository';
+import { refreshRankingViews } from '@/lib/db/refresh-views';
 import {
   VentaDetallada,
   TotalVentas,
@@ -23,21 +24,30 @@ export class VentasService {
     const { id_variante, id_sucursal, id_motivo, cantidad, precio_venta_final } = validation.data;
     const { id_usuario } = input;
 
-    const inventario = await InventarioRepository.findByVarianteAndSucursal(id_variante, id_sucursal);
-    if (!inventario) {
-      throw new NotFoundError('No existe inventario para esta variante en la sucursal indicada');
-    }
-
-    if (inventario.stock_actual < cantidad) {
-      throw new ValidationError(
-        `Stock insuficiente. Disponible: ${inventario.stock_actual}, Solicitado: ${cantidad}`
-      );
-    }
-
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
-    //Verificar si se pueden crear views de las queries más complejas
+
+      // Verificar stock DENTRO de la transacción con bloqueo de fila (FOR UPDATE)
+      // para evitar condiciones de carrera al descontar stock concurrentemente.
+      const { rows: inventarioRows } = await client.query(
+        `SELECT stock_actual FROM inventario_sucursal
+         WHERE id_variante = $1 AND id_sucursal = $2
+         FOR UPDATE;`,
+        [id_variante, id_sucursal]
+      );
+
+      if (inventarioRows.length === 0) {
+        throw new NotFoundError('No existe inventario para esta variante en la sucursal indicada');
+      }
+
+      if (inventarioRows[0].stock_actual < cantidad) {
+        throw new ValidationError(
+          `Stock insuficiente. Disponible: ${inventarioRows[0].stock_actual}, Solicitado: ${cantidad}`
+        );
+      }
+
+      // Registrar la venta
       const insertQuery = `
         INSERT INTO ventas_bajas (id_variante, id_sucursal, id_motivo, id_usuario, cantidad, precio_venta_final, fecha_hora)
         VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
@@ -47,15 +57,24 @@ export class VentasService {
         id_variante, id_sucursal, id_motivo, id_usuario, cantidad, precio_venta_final,
       ]);
 
+      // Descontar stock atómicamente
       const updateQuery = `
         UPDATE inventario_sucursal
         SET stock_actual = stock_actual - $1, updated_at = CURRENT_TIMESTAMP
         WHERE id_variante = $2 AND id_sucursal = $3
+          AND stock_actual >= $1
         RETURNING stock_actual;
       `;
       const { rows: stockRows } = await client.query(updateQuery, [cantidad, id_variante, id_sucursal]);
 
+      if (stockRows.length === 0) {
+        throw new ValidationError('No se pudo descontar el stock (posible concurrencia)');
+      }
+
       await client.query('COMMIT');
+
+      // Refrescar vistas materializadas de ranking después de cada venta
+      await refreshRankingViews();
 
       return {
         id_transaccion: ventaRows[0].id_transaccion,

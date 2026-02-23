@@ -16,7 +16,7 @@ export class VariantesService {
    * - Genera código de barras automático si no se provee
    * - Verifica duplicados (mismo producto + mismo modelo + mismo color)
    */
-  static async addVariante(productoId: number, data: CreateVarianteInput): Promise<Variante> {
+  static async addVariante(productoId: number, data: Omit<CreateVarianteInput, 'sku_variante'>): Promise<Variante> {
     // 1. Normalización de datos
     const modelo = data.modelo ? data.modelo.trim().toUpperCase() : null;
     const color = data.color ? data.color.trim().toUpperCase() : null;
@@ -45,9 +45,15 @@ export class VariantesService {
       throw new ConflictError('Ya existe una variante con este modelo y color para el producto');
     }
 
+    // 4.5 Obtener producto maestro para derivar el sku_variante
+    const { ProductosService } = await import('./productos.service'); // Import dinámico para evitar dependencias circulares si aplican
+    const productoMaestro = await ProductosService.getProductoById(productoId);
+    const skuVariante = ProductosService.generarSkuVariante(productoMaestro.sku, color, modelo);
+
     // 5. Persistir usando el repository
-    const nuevaVariante: CreateVarianteInput = {
+    const nuevaVariante: CreateVarianteInput & { sku_variante: string } = {
       ...data,
+      sku_variante: skuVariante,
       codigo_barras: codigoBarras,
       modelo,
       color,

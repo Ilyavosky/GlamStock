@@ -20,13 +20,14 @@ export class VariantesRepository {
       await client.query('BEGIN');
 
       const varianteQuery = `
-        INSERT INTO variantes (id_producto_maestro, codigo_barras, modelo, color, precio_adquisicion, precio_venta_etiqueta)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id_variante, id_producto_maestro, codigo_barras, modelo, color,
+        INSERT INTO variantes (id_producto_maestro, sku_variante, codigo_barras, modelo, color, precio_adquisicion, precio_venta_etiqueta)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id_variante, id_producto_maestro, sku_variante, codigo_barras, modelo, color,
                   precio_adquisicion, precio_venta_etiqueta, etiqueta_generada, created_at;
       `;
       const { rows } = await client.query(varianteQuery, [
         idProductoMaestro,
+        data.sku_variante,
         data.codigo_barras,
         data.modelo ?? null,
         data.color ?? null,
@@ -60,7 +61,7 @@ export class VariantesRepository {
 
   static async findById(id: number): Promise<Variante | null> {
     const query = `
-      SELECT id_variante, id_producto_maestro, codigo_barras, modelo, color,
+      SELECT id_variante, id_producto_maestro, sku_variante, codigo_barras, modelo, color,
              precio_adquisicion, precio_venta_etiqueta, etiqueta_generada, created_at
       FROM variantes
       WHERE id_variante = $1;
@@ -71,7 +72,7 @@ export class VariantesRepository {
 
   static async findByProductoMaestro(idProductoMaestro: number): Promise<Variante[]> {
     const query = `
-      SELECT id_variante, id_producto_maestro, codigo_barras, modelo, color,
+      SELECT id_variante, id_producto_maestro, sku_variante, codigo_barras, modelo, color,
              precio_adquisicion, precio_venta_etiqueta, etiqueta_generada, created_at
       FROM variantes
       WHERE id_producto_maestro = $1
@@ -116,7 +117,7 @@ export class VariantesRepository {
       UPDATE variantes
       SET ${campos.join(', ')}
       WHERE id_variante = $${paramIndex}
-      RETURNING id_variante, id_producto_maestro, codigo_barras, modelo, color,
+      RETURNING id_variante, id_producto_maestro, sku_variante, codigo_barras, modelo, color,
                 precio_adquisicion, precio_venta_etiqueta, etiqueta_generada, created_at;
     `;
 
