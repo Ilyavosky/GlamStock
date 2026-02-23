@@ -31,7 +31,7 @@ export class ProductosRepository {
     const query = `
       SELECT 
         pm.id_producto_maestro, pm.sku, pm.nombre, pm.created_at,
-        v.id_variante, v.codigo_barras, v.modelo, v.color,
+        v.id_variante, v.sku_variante, v.codigo_barras, v.modelo, v.color,
         v.precio_adquisicion, v.precio_venta_etiqueta,
         v.etiqueta_generada, v.created_at AS variante_created_at
       FROM productos_maestros pm
@@ -46,7 +46,7 @@ export class ProductosRepository {
     const query = `
       SELECT 
         pm.id_producto_maestro, pm.sku, pm.nombre, pm.created_at,
-        v.id_variante, v.codigo_barras, v.modelo, v.color,
+        v.id_variante, v.sku_variante, v.codigo_barras, v.modelo, v.color,
         v.precio_adquisicion, v.precio_venta_etiqueta,
         v.etiqueta_generada, v.created_at AS variante_created_at
       FROM productos_maestros pm
@@ -163,6 +163,7 @@ export class ProductosRepository {
           producto.variantes.push({
             id_variante: row.id_variante as number,
             id_producto_maestro: idProducto,
+            sku_variante: row.sku_variante as string,
             codigo_barras: row.codigo_barras as string,
             modelo: row.modelo as string | null,
             color: row.color as string | null,

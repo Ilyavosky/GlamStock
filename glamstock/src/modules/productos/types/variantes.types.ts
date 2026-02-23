@@ -1,6 +1,7 @@
 export interface Variante {
   id_variante: number;
   id_producto_maestro: number;
+  sku_variante: string;
   codigo_barras?: string;
   modelo?: string | null;
   color: string | null;
@@ -13,6 +14,7 @@ export interface Variante {
 
 // DTOs de entrada
 export interface CreateVarianteInput {
+  sku_variante: string;
   codigo_barras?: string;
   modelo?: string | null;
   color?: string | null;

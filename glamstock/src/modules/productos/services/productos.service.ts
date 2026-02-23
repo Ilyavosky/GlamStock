@@ -58,7 +58,7 @@ export class ProductosService {
       await client.query('BEGIN');
 
       // 3.1 Crear Producto
-      const sku = productoNormalizado.sku || ProductosService.generarSku(productoNormalizado.nombre);
+      const sku = productoNormalizado.sku || ProductosService.generarSkuBase(productoNormalizado.nombre);
       const productoQuery = `
         INSERT INTO productos_maestros (sku, nombre)
         VALUES ($1, $2)
@@ -70,15 +70,18 @@ export class ProductosService {
       // 3.2 Crear Variantes
       const variantes: Variante[] = [];
       const varianteQuery = `
-        INSERT INTO variantes (id_producto_maestro, codigo_barras, modelo, color, precio_adquisicion, precio_venta_etiqueta, etiqueta_generada)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id_variante, id_producto_maestro, codigo_barras, modelo, color, 
+        INSERT INTO variantes (id_producto_maestro, sku_variante, codigo_barras, modelo, color, precio_adquisicion, precio_venta_etiqueta, etiqueta_generada)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id_variante, id_producto_maestro, sku_variante, codigo_barras, modelo, color, 
                   precio_adquisicion, precio_venta_etiqueta, etiqueta_generada, created_at;
       `;
 
       for (const v of variantesNormalizadas) {
+        const skuVariante = ProductosService.generarSkuVariante(producto.sku, v.color, v.modelo);
+        
         const { rows: varianteRows } = await client.query(varianteQuery, [
           producto.id_producto_maestro,
+          skuVariante,
           v.codigo_barras,
           v.modelo ?? null,
           v.color ?? null,
@@ -148,7 +151,7 @@ export class ProductosService {
     const productosQuery = `
       SELECT 
         pm.id_producto_maestro, pm.sku, pm.nombre, pm.created_at,
-        v.id_variante, v.codigo_barras, v.modelo, v.color,
+        v.id_variante, v.sku_variante, v.codigo_barras, v.modelo, v.color,
         v.precio_adquisicion, v.precio_venta_etiqueta,
         v.etiqueta_generada, v.created_at AS variante_created_at,
         s.nombre_lugar AS sucursal
@@ -206,14 +209,27 @@ export class ProductosService {
   }
 
   /**
-   * Genera SKU: 3 letras del nombre + timestamp
+   * Genera SKU base del producto maestro (ej: ZAP-1740269100000)
    */
-  static generarSku(nombre: string): string {
+  static generarSkuBase(nombre: string): string {
     const prefijo = nombre
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
       .substring(0, 3);
     const timestamp = Date.now();
     return `${prefijo}-${timestamp}`;
+  }
+
+  /**
+   * Genera SKU de la variante derivado del SKU base (ej: ZAP-1740269100000-NEG-MOD01)
+   */
+  static generarSkuVariante(skuBase: string, color?: string | null, modelo?: string | null): string {
+    const colorPart = color
+      ? color.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 3)
+      : 'XXX';
+    const modelPart = modelo
+      ? modelo.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 5)
+      : 'GEN';
+    return `${skuBase}-${colorPart}-${modelPart}`;
   }
 }

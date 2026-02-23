@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 CREATE TABLE IF NOT EXISTS variantes (
     id_variante SERIAL PRIMARY KEY,
     id_producto_maestro INTEGER NOT NULL,
+    sku_variante VARCHAR(100) NOT NULL UNIQUE,
     codigo_barras VARCHAR(100) NOT NULL UNIQUE,
     modelo VARCHAR(100),
     color VARCHAR(50),
