@@ -52,3 +52,8 @@ export interface VentaFormProps {
   onSuccess: () => void;
   showToast: (msg: string, type: 'success' | 'error') => void;
 }
+
+export interface MotivoTransaccion {
+  id_motivo: number;
+  descripcion: string;
+}

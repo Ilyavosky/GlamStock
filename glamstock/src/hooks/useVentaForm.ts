@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Sucursal, InventarioItem, VentaFormData, VentaFormErrors } from '@/types/ventas-view.types';
+import type { Sucursal, InventarioItem, VentaFormData, VentaFormErrors, MotivoTransaccion } from '@/types/ventas-view.types';
 
 const FORM_INITIAL: VentaFormData = {
   sucursal_id: '',
   id_variante: '',
   cantidad: '',
   precio_venta_final: '',
-  id_motivo: '1',
+  id_motivo: '',
 };
 
 interface UseVentaFormResult {
@@ -15,6 +15,7 @@ interface UseVentaFormResult {
   submitting: boolean;
   sucursales: Sucursal[];
   loadingSucursales: boolean;
+  motivos: MotivoTransaccion[];
   filteredInventario: InventarioItem[];
   loadingInventario: boolean;
   searchProducto: string;
@@ -39,6 +40,7 @@ export function useVentaForm(
 
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [loadingSucursales, setLoadingSucursales] = useState(false);
+  const [motivos, setMotivos] = useState<MotivoTransaccion[]>([]);
 
   const [inventario, setInventario] = useState<InventarioItem[]>([]);
   const [filteredInventario, setFilteredInventario] = useState<InventarioItem[]>([]);
@@ -51,11 +53,22 @@ export function useVentaForm(
   useEffect(() => {
     if (!open) return;
     setLoadingSucursales(true);
-    fetch('/api/inventario/sucursales', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : { data: [] })
-      .then(d => setSucursales(d.data || []))
-      .catch(() => setSucursales([]))
-      .finally(() => setLoadingSucursales(false));
+    Promise.all([
+      fetch('/api/inventario/sucursales', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : { data: [] })
+        .then(d => setSucursales(d.data || []))
+        .catch(() => setSucursales([])),
+      fetch('/api/motivos', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : { data: [] })
+        .then(d => {
+          const lista: MotivoTransaccion[] = d.data || [];
+          setMotivos(lista);
+          if (lista.length > 0) {
+            setFormData(prev => ({ ...prev, id_motivo: String(lista[0].id_motivo) }));
+          }
+        })
+        .catch(() => setMotivos([])),
+    ]).finally(() => setLoadingSucursales(false));
   }, [open]);
 
   const fetchInventario = useCallback(async (sucursalId: string) => {
@@ -129,7 +142,8 @@ export function useVentaForm(
   };
 
   const reset = () => {
-    setFormData(FORM_INITIAL);
+    const primerMotivo = motivos.length > 0 ? String(motivos[0].id_motivo) : '';
+    setFormData({ ...FORM_INITIAL, id_motivo: primerMotivo });
     setFormErrors({});
     setSelectedProduct(null);
     setInventario([]);
@@ -180,6 +194,7 @@ export function useVentaForm(
     submitting,
     sucursales,
     loadingSucursales,
+    motivos,
     filteredInventario,
     loadingInventario,
     searchProducto,

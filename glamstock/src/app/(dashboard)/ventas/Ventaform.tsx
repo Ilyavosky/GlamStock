@@ -1,4 +1,3 @@
-// src/app/(dashboard)/ventas/Ventaform.tsx
 'use client';
 
 import Dialog from '@/components/ui/Dialog';
@@ -7,17 +6,11 @@ import { useVentaForm } from '@/hooks/useVentaForm';
 import type { VentaFormProps } from '@/types/ventas-view.types';
 import styles from './Ventaform.module.css';
 
-const MOTIVOS = [
-  { id: 1, label: 'Venta directa al cliente' },
-  { id: 2, label: 'Baja por merma / daño' },
-  { id: 3, label: 'Ajuste de inventario (Sobrante)' },
-  { id: 4, label: 'Ajuste de inventario (Faltante)' },
-];
-
 export default function VentaForm({ open, onClose, onSuccess, showToast }: VentaFormProps) {
   const {
     formData, formErrors, submitting,
     sucursales, loadingSucursales,
+    motivos,
     filteredInventario, loadingInventario,
     searchProducto, selectedProduct, total,
     setSearchProducto, handleChange, handleSelectProduct,
@@ -140,8 +133,8 @@ export default function VentaForm({ open, onClose, onSuccess, showToast }: Venta
               value={formData.id_motivo}
               onChange={handleChange}
             >
-              {MOTIVOS.map(m => (
-                <option key={m.id} value={m.id}>{m.label}</option>
+              {motivos.map(m => (
+                <option key={m.id_motivo} value={m.id_motivo}>{m.descripcion}</option>
               ))}
             </select>
           </div>
