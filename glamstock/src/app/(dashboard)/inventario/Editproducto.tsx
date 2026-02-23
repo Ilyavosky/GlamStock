@@ -25,7 +25,7 @@ export default function EditProductoModal({
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  const { formData, setFormData, varianteId, inventarioId, loading } = useProductoEdit(
+  const { formData, setFormData, loading } = useProductoEdit(
     open,
     productoId,
     onClose,
@@ -42,51 +42,23 @@ export default function EditProductoModal({
     e.preventDefault();
     if (!productoId) return;
 
-    const errors = buildFormErrors(formData);
-    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    const errors = buildFormErrors(formData, false, true); // true for isCreationMode to skip variant validation
+    if (errors.nombre) { setFormErrors(errors); return; }
 
     setSubmitting(true);
     try {
-      const results = await Promise.allSettled([
-        fetch(`/api/productos/${productoId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ nombre: formData.nombre.trim(), sku: formData.sku.trim() || undefined }),
-        }),
-        varianteId
-          ? fetch(`/api/variantes/${varianteId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                modelo: formData.modelo.trim() || null,
-                color: formData.color.trim() || null,
-                precio_adquisicion: Number(formData.precio_adquisicion),
-                precio_venta_etiqueta: Number(formData.precio_venta_etiqueta),
-              }),
-            })
-          : Promise.resolve(null),
-        inventarioId
-          ? fetch(`/api/inventario/${inventarioId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ stock_actual: Number(formData.stock_inicial) }),
-            })
-          : Promise.resolve(null),
-      ]);
+      const result = await fetch(`/api/productos/${productoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ nombre: formData.nombre.trim(), sku: formData.sku.trim() || undefined }),
+      });
 
-      const failures: string[] = [];
-      for (const result of results) {
-        if (result.status === 'rejected') { failures.push(result.reason?.message ?? 'Error'); continue; }
-        if (result.value && !result.value.ok) {
-          const d = await result.value.json().catch(() => ({}));
-          failures.push(d.error ?? 'Error al guardar');
-        }
+      if (!result.ok) {
+        const d = await result.json().catch(() => ({}));
+        showToast(d.error ?? 'Error al guardar', 'error');
+        return;
       }
-
-      if (failures.length > 0) { showToast(failures[0], 'error'); return; }
       showToast('Producto actualizado correctamente', 'success');
       onSuccess();
       onClose();
@@ -112,6 +84,7 @@ export default function EditProductoModal({
           submitting={submitting}
           submitLabel="Guardar cambios"
           showSucursal={false}
+          isCreationMode={true} // This hides the variant box
           onChange={handleChange}
           onSubmit={handleSubmit}
           onCancel={handleClose}
