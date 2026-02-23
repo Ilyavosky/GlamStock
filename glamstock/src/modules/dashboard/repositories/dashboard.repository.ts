@@ -1,9 +1,11 @@
 import { db } from '@/lib/db/client';
 import {
+  RankingProducto,
+  RankingProductoSucursal,
+  ResumenVentasSucursal,
   EstadisticasGenerales,
   ProductosPorSucursal,
   UtilidadesNetas,
-  TopProducto,
 } from '../types/dashboard.types';
 
 export class DashboardRepository {
@@ -57,7 +59,7 @@ export class DashboardRepository {
   }
 
   /**
-   * Calcula utilidades netas: SUM((precio_venta_final - precio_adquisicion) * cantidad).
+   * Calcula utilidades netas de todas las sucursales combinadas.
    * Filtra por rango de fechas si se proporcionan.
    */
   static async getUtilidadesNetas(fechaInicio?: Date, fechaFin?: Date): Promise<UtilidadesNetas> {
@@ -90,36 +92,121 @@ export class DashboardRepository {
     };
   }
 
+  // ===== Métodos de Ranking (usan vistas materializadas) =====
+
   /**
-   * Obtiene los productos más vendidos usando GROUP BY y ORDER BY cantidad DESC.
-   * Limita a `limit` resultados (default 10).
+   * Obtiene los N productos MÁS vendidos en TODAS las sucursales.
+   * Fuente: vista_ranking_productos_global (materializada).
    */
-  static async getTopProductos(limit: number = 10): Promise<TopProducto[]> {
-    const query = `
-      SELECT
-        pm.id_producto_maestro,
-        pm.sku,
-        pm.nombre,
-        v.modelo,
-        v.color,
-        SUM(vb.cantidad) AS total_vendido,
-        ROUND(SUM(vb.precio_venta_final * vb.cantidad), 2) AS ingresos
-      FROM ventas_bajas vb
-      JOIN variantes v ON vb.id_variante = v.id_variante
-      JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
-      GROUP BY pm.id_producto_maestro, pm.sku, pm.nombre, v.modelo, v.color
-      ORDER BY total_vendido DESC
-      LIMIT $1;
-    `;
-    const { rows } = await db.query(query, [limit]);
+  static async getMasVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
+    const { rows } = await db.query(
+      `SELECT * FROM vista_ranking_productos_global
+       ORDER BY ranking_mas_vendido ASC
+       LIMIT $1;`,
+      [limit]
+    );
+    return rows.map(mapRankingProducto);
+  }
+
+  /**
+   * Obtiene los N productos MENOS vendidos en TODAS las sucursales.
+   * Incluye variantes con 0 ventas para detectar productos sin rotación.
+   * Fuente: vista_ranking_productos_global (materializada).
+   */
+  static async getMenosVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
+    const { rows } = await db.query(
+      `SELECT * FROM vista_ranking_productos_global
+       ORDER BY ranking_menos_vendido ASC
+       LIMIT $1;`,
+      [limit]
+    );
+    return rows.map(mapRankingProducto);
+  }
+
+  /**
+   * Obtiene los N productos MÁS vendidos en una sucursal específica.
+   * Fuente: vista_ranking_productos_por_sucursal (materializada).
+   */
+  static async getMasVendidosPorSucursal(id_sucursal: number, limit: number = 10): Promise<RankingProductoSucursal[]> {
+    const { rows } = await db.query(
+      `SELECT * FROM vista_ranking_productos_por_sucursal
+       WHERE id_sucursal = $1
+       ORDER BY ranking_mas_vendido ASC
+       LIMIT $2;`,
+      [id_sucursal, limit]
+    );
+    return rows.map(mapRankingProductoSucursal);
+  }
+
+  /**
+   * Obtiene los N productos MENOS vendidos en una sucursal específica.
+   * Fuente: vista_ranking_productos_por_sucursal (materializada).
+   */
+  static async getMenosVendidosPorSucursal(id_sucursal: number, limit: number = 10): Promise<RankingProductoSucursal[]> {
+    const { rows } = await db.query(
+      `SELECT * FROM vista_ranking_productos_por_sucursal
+       WHERE id_sucursal = $1
+       ORDER BY ranking_menos_vendido ASC
+       LIMIT $2;`,
+      [id_sucursal, limit]
+    );
+    return rows.map(mapRankingProductoSucursal);
+  }
+
+  /**
+   * Obtiene los KPIs de ventas por cada sucursal activa.
+   * Fuente: vista_resumen_ventas_por_sucursal (view regular, siempre fresca).
+   */
+  static async getResumenVentasPorSucursal(): Promise<ResumenVentasSucursal[]> {
+    const { rows } = await db.query(`SELECT * FROM vista_resumen_ventas_por_sucursal;`);
     return rows.map(r => ({
-      id_producto_maestro: r.id_producto_maestro,
-      sku: r.sku,
-      nombre: r.nombre,
-      modelo: r.modelo,
-      color: r.color,
-      total_vendido: Number(r.total_vendido),
-      ingresos: Number(r.ingresos),
+      id_sucursal: Number(r.id_sucursal),
+      nombre_sucursal: r.nombre_sucursal,
+      total_transacciones: Number(r.total_transacciones),
+      total_unidades_vendidas: Number(r.total_unidades_vendidas),
+      ingresos_brutos: Number(r.ingresos_brutos),
+      costo_total: Number(r.costo_total),
+      utilidad_neta: Number(r.utilidad_neta),
     }));
   }
+
+  /**
+   * Refresca las dos vistas materializadas de ranking.
+   * Llamar después de registrar una venta para mantener los datos actualizados.
+   * Usa CONCURRENTLY para no bloquear lecturas simultáneas.
+   */
+  static async refreshRankingViews(): Promise<void> {
+    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY vista_ranking_productos_global;`);
+    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY vista_ranking_productos_por_sucursal;`);
+  }
+}
+
+// ===== Helpers de mapeo =====
+
+function mapRankingProducto(r: Record<string, unknown>): RankingProducto {
+  return {
+    id_producto_maestro: Number(r.id_producto_maestro),
+    sku: r.sku as string,
+    nombre_producto: r.nombre_producto as string,
+    id_variante: Number(r.id_variante),
+    modelo: r.modelo as string | null,
+    color: r.color as string | null,
+    precio_adquisicion: Number(r.precio_adquisicion),
+    precio_venta_etiqueta: Number(r.precio_venta_etiqueta),
+    total_unidades_vendidas: Number(r.total_unidades_vendidas),
+    ingresos_totales: Number(r.ingresos_totales),
+    utilidad_total: Number(r.utilidad_total),
+    ranking_mas_vendido: Number(r.ranking_mas_vendido),
+    ranking_menos_vendido: Number(r.ranking_menos_vendido),
+  };
+}
+
+function mapRankingProductoSucursal(r: Record<string, unknown>): RankingProductoSucursal {
+  return {
+    ...mapRankingProducto(r),
+    id_sucursal: Number(r.id_sucursal),
+    nombre_sucursal: r.nombre_sucursal as string,
+    ingresos_sucursal: Number(r.ingresos_sucursal),
+    utilidad_sucursal: Number(r.utilidad_sucursal),
+  };
 }
