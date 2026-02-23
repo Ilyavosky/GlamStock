@@ -55,33 +55,36 @@ export function useDashboardData(): UseDashboardDataResult {
       });
       setVarianteToProductoMap(productoMap);
 
+      // stockMap y vsMap se declaran antes del Promise.all
+      // y se populan con rawItems antes del spread
+      const stockMap = new Map<number, number>();
+      const vsMap = new Map<number, string>();
+
       const inventariosPorSucursal = await Promise.all(
         listaSucursales.map(async (s) => {
           const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
           const d = r.ok ? await r.json() : { data: [] };
-          const inv: InventarioItem[] = (d.data || []).map((item: InventarioItem) => ({
+          const rawItems: InventarioItem[] = d.data || [];
+
+          // Acumular stock con los items originales del API, antes del spread
+          rawItems.forEach((item: InventarioItem) => {
+            const stock = Number(item.stock_actual) || 0;
+            stockMap.set(item.id_variante, (stockMap.get(item.id_variante) ?? 0) + stock);
+            if (!vsMap.has(item.id_variante)) vsMap.set(item.id_variante, s.nombre_lugar);
+          });
+
+          // Agregar precio_adquisicion para las SucursalCards del dashboard
+          const inv: InventarioItem[] = rawItems.map((item: InventarioItem) => ({
             ...item,
             precio_adquisicion: adqMap.get(item.id_variante),
           }));
+
           return { ...s, inventario: inv, loading: false };
         })
       );
 
-      const vsMap = new Map<number, string>();
-      inventariosPorSucursal.forEach(s => {
-        s.inventario.forEach(item => {
-          if (!vsMap.has(item.id_variante)) vsMap.set(item.id_variante, s.nombre_lugar);
-        });
-      });
       setVarianteSucursalMap(vsMap);
       setSucursales(inventariosPorSucursal);
-
-      const stockMap = new Map<number, number>();
-      inventariosPorSucursal.forEach(s => {
-        s.inventario.forEach((item: InventarioItem) => {
-          stockMap.set(item.id_variante, (stockMap.get(item.id_variante) ?? 0) + item.stock_actual);
-        });
-      });
 
       const filas: ProductoFila[] = (dataProductos.productos || []).map((p: Producto) => ({
         id: p.id_producto_maestro,
@@ -92,6 +95,7 @@ export function useDashboardData(): UseDashboardDataResult {
         valorVenta: p.variantes.reduce((a, v) => a + Number(v.precio_venta_etiqueta), 0),
       }));
       setProductos(filas);
+
     } finally {
       setTableLoading(false);
     }

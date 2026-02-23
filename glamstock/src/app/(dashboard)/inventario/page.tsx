@@ -12,7 +12,6 @@ import type { Variante, Producto, ProductoFila } from '@/types/inventario-view.t
 import styles from './page.module.css';
 import formStyles from './form.module.css';
 
-
 const FORM_INITIAL: FormData = {
   nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
   precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '',
@@ -70,8 +69,9 @@ export default function InventarioPage() {
         })
       );
 
+      const flat = inventarios.flat();
       const stockMap = new Map<number, number>();
-      inventarios.flat().forEach((item: { id_variante: number; stock_actual: number }) => {
+      flat.forEach((item: { id_variante: number; stock_actual: number }) => {
         stockMap.set(item.id_variante, (stockMap.get(item.id_variante) ?? 0) + item.stock_actual);
       });
 
@@ -131,11 +131,14 @@ export default function InventarioPage() {
     if (!deleteId) return;
     try {
       const res = await fetch(`/api/productos/${deleteId}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Error al eliminar el producto');
+      }
       showToast('Producto eliminado correctamente', 'success');
       fetchProductos();
-    } catch {
-      showToast('Error al eliminar el producto', 'error');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error al eliminar el producto', 'error');
     } finally {
       setDeleteId(null);
       setDeleteNombre('');
