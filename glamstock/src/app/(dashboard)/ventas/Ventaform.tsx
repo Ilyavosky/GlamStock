@@ -1,162 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import Button from '@/components/ui/Button';
-import type { Sucursal, InventarioItem, VentaFormData, VentaFormErrors, VentaFormProps } from '@/types/ventas-view.types';
+import { useVentaForm } from '@/hooks/useVentaForm';
+import type { VentaFormProps } from '@/types/ventas-view.types';
 import styles from './Ventaform.module.css';
 
-const MOTIVOS = [
-  { id: 1, label: 'Venta directa al cliente' },
-  { id: 2, label: 'Baja por merma / daño' },
-  { id: 3, label: 'Ajuste de inventario (Sobrante)' },
-  { id: 4, label: 'Ajuste de inventario (Faltante)' },
-];
-
-const FORM_INITIAL: VentaFormData = {
-  sucursal_id: '',
-  id_variante: '',
-  cantidad: '',
-  precio_venta_final: '',
-  id_motivo: '1',
-};
-
 export default function VentaForm({ open, onClose, onSuccess, showToast }: VentaFormProps) {
-  const [formData, setFormData] = useState<VentaFormData>(FORM_INITIAL);
-  const [formErrors, setFormErrors] = useState<VentaFormErrors>({});
-  const [submitting, setSubmitting] = useState(false);
-
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [loadingSucursales, setLoadingSucursales] = useState(false);
-
-  const [inventario, setInventario] = useState<InventarioItem[]>([]);
-  const [filteredInventario, setFilteredInventario] = useState<InventarioItem[]>([]);
-  const [loadingInventario, setLoadingInventario] = useState(false);
-  const [searchProducto, setSearchProducto] = useState('');
-
-  const [selectedProduct, setSelectedProduct] = useState<InventarioItem | null>(null);
-  const [total, setTotal] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setLoadingSucursales(true);
-    fetch('/api/inventario/sucursales', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : { data: [] })
-      .then(d => setSucursales(d.data || []))
-      .catch(() => setSucursales([]))
-      .finally(() => setLoadingSucursales(false));
-  }, [open]);
-
-  const fetchInventario = useCallback(async (sucursalId: string) => {
-    if (!sucursalId) { setInventario([]); setFilteredInventario([]); return; }
-    setLoadingInventario(true);
-    try {
-      const r = await fetch(`/api/inventario?sucursal_id=${sucursalId}`, { credentials: 'include' });
-      const d = r.ok ? await r.json() : { data: [] };
-      const items: InventarioItem[] = (d.data || []).filter((item: InventarioItem) => item.stock_actual > 0);
-      setInventario(items);
-      setFilteredInventario(items);
-    } catch {
-      setInventario([]);
-      setFilteredInventario([]);
-    } finally {
-      setLoadingInventario(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!searchProducto.trim()) { setFilteredInventario(inventario); return; }
-    const lower = searchProducto.toLowerCase();
-    setFilteredInventario(inventario.filter(item =>
-      item.nombre_producto.toLowerCase().includes(lower) ||
-      item.sku_producto.toLowerCase().includes(lower)
-    ));
-  }, [searchProducto, inventario]);
-
-  useEffect(() => {
-    const qty = Number(formData.cantidad);
-    const price = Number(formData.precio_venta_final);
-    setTotal(qty > 0 && price >= 0 ? qty * price : null);
-  }, [formData.cantidad, formData.precio_venta_final]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormErrors(prev => ({ ...prev, [name]: undefined }));
-
-    if (name === 'sucursal_id') {
-      setFormData(prev => ({ ...prev, sucursal_id: value, id_variante: '', cantidad: '', precio_venta_final: '' }));
-      setSelectedProduct(null);
-      setSearchProducto('');
-      fetchInventario(value);
-      return;
-    }
-
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectProduct = (item: InventarioItem) => {
-    setSelectedProduct(item);
-    setFormData(prev => ({
-      ...prev,
-      id_variante: String(item.id_variante),
-      precio_venta_final: String(item.precio_venta),
-    }));
-    setFormErrors(prev => ({ ...prev, id_variante: undefined }));
-  };
-
-  const validate = (): boolean => {
-    const errors: VentaFormErrors = {};
-    if (!formData.sucursal_id) errors.sucursal_id = 'Selecciona una sucursal';
-    if (!formData.id_variante) errors.id_variante = 'Selecciona un producto';
-    if (!formData.cantidad || Number(formData.cantidad) <= 0) errors.cantidad = 'Ingresa una cantidad válida';
-    if (!formData.precio_venta_final || Number(formData.precio_venta_final) < 0) errors.precio_venta_final = 'Ingresa un precio válido';
-    if (selectedProduct && Number(formData.cantidad) > selectedProduct.stock_actual) {
-      errors.cantidad = `Stock insuficiente. Disponible: ${selectedProduct.stock_actual}`;
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch('/api/ventas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          id_variante: Number(formData.id_variante),
-          id_sucursal: Number(formData.sucursal_id),
-          id_motivo: Number(formData.id_motivo),
-          cantidad: Number(formData.cantidad),
-          precio_venta_final: Number(formData.precio_venta_final),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al registrar venta');
-      showToast('Venta registrada exitosamente', 'success');
-      onSuccess();
-      handleClose();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error al registrar venta', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleClose = () => {
-    if (submitting) return;
-    setFormData(FORM_INITIAL);
-    setFormErrors({});
-    setSelectedProduct(null);
-    setInventario([]);
-    setFilteredInventario([]);
-    setSearchProducto('');
-    setTotal(null);
-    onClose();
-  };
+  const {
+    formData, formErrors, submitting,
+    sucursales, loadingSucursales,
+    motivos,
+    filteredInventario, loadingInventario,
+    searchProducto, selectedProduct, total,
+    setSearchProducto, handleChange, handleSelectProduct,
+    handleSubmit, handleClose,
+  } = useVentaForm(open, onClose, onSuccess, showToast);
 
   return (
     <Dialog open={open} onClose={handleClose} title="Registrar venta">
@@ -274,8 +133,8 @@ export default function VentaForm({ open, onClose, onSuccess, showToast }: Venta
               value={formData.id_motivo}
               onChange={handleChange}
             >
-              {MOTIVOS.map(m => (
-                <option key={m.id} value={m.id}>{m.label}</option>
+              {motivos.map(m => (
+                <option key={m.id_motivo} value={m.id_motivo}>{m.descripcion}</option>
               ))}
             </select>
           </div>
@@ -298,6 +157,7 @@ export default function VentaForm({ open, onClose, onSuccess, showToast }: Venta
             {submitting ? 'Registrando...' : 'Confirmar venta'}
           </Button>
         </div>
+
       </form>
     </Dialog>
   );
