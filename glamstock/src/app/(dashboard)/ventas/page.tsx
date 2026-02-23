@@ -3,28 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
 import VentaForm from './Ventaform';
+import type { VentaDetallada, Sucursal } from '@/types/ventas-view.types';
 import styles from './page.module.css';
 
-interface VentaDetallada {
-  id_transaccion: number;
-  fecha_hora: string;
-  nombre_producto: string;
-  sku: string;
-  modelo: string | null;
-  color: string | null;
-  nombre_sucursal: string;
-  cantidad: number;
-  precio_venta_final: string;
-  motivo: string;
-  nombre_usuario: string;
-  precio_adquisicion: string;
-  utilidad: string;
-}
-
-interface Sucursal {
-  id_sucursal: number;
-  nombre_lugar: string;
-}
 
 export default function VentasPage() {
   const [ventas, setVentas] = useState<VentaDetallada[]>([]);

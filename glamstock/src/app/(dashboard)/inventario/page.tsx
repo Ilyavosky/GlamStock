@@ -8,32 +8,10 @@ import Dialog from '@/components/ui/Dialog';
 import EditProductoModal from './Editproducto';
 import InfoProductoModal from './Infoproducto';
 import NuevoProductoForm, { FormData, FormErrors, Sucursal, validateField, buildFormErrors } from './Nuevoproducto';
+import type { Variante, Producto, ProductoFila } from '@/types/inventario-view.types';
 import styles from './page.module.css';
 import formStyles from './form.module.css';
 
-interface Variante {
-  id_variante: number;
-  precio_adquisicion: number;
-  precio_venta_etiqueta: number;
-  sucursal?: string;
-}
-
-interface Producto {
-  id_producto_maestro: number;
-  sku: string;
-  nombre: string;
-  variantes: Variante[];
-}
-
-interface ProductoFila {
-  id: number;
-  sku: string;
-  nombre: string;
-  totalStock: number;
-  valorOriginal: number;
-  valorVenta: number;
-  sucursal: string;
-}
 
 const FORM_INITIAL: FormData = {
   nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
