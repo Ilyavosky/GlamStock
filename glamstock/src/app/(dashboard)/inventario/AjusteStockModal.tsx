@@ -19,6 +19,7 @@ const MOTIVOS = [
   'Baja por merma / daño',
   'Ajuste de inventario (Sobrante)',
   'Ajuste de inventario (Faltante)',
+  'Ingreso por adquisición / compra',
 ];
 
 export default function AjusteStockModal({ open, varianteId, sucursalId, onClose, onSuccess, showToast }: AjusteStockModalProps) {
@@ -97,7 +98,7 @@ export default function AjusteStockModal({ open, varianteId, sucursalId, onClose
               value={formData.cantidad}
               onChange={handleChange}
             />
-            <p className={formStyles.hint} style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>
+            <p className={formStyles.hint}>
               Usa números negativos para dar de baja inventario (ej. -2) y números positivos para asentar ingreso nuevo (ej. 10).
             </p>
             {formErrors.cantidad && <p className={formStyles.error}>{formErrors.cantidad}</p>}
