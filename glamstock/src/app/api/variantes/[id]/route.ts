@@ -11,6 +11,29 @@ const updateVarianteSchema = z.object({
   modelo: z.string().max(100).nullable().optional(),
   color: z.string().max(50).nullable().optional(),
   codigo_barras: z.string().min(3).max(100).optional(),
+  sku_variante: z.string().min(3).max(100).optional(),
+});
+
+export const GET = withAuth(async (req: NextRequest, _payload: unknown, { params }: { params: Promise<{ id: string }> }) => {
+  try {
+    const { id } = await params;
+    const validation = idSchema.safeParse(id);
+    if (!validation.success) {
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+    }
+
+    const { VariantesRepository } = await import('@/modules/productos/repositories/variantes.repository');
+    const variante = await VariantesRepository.findById(validation.data);
+
+    if (!variante) {
+      return NextResponse.json({ error: 'Variante no encontrada' }, { status: 404 });
+    }
+
+    return NextResponse.json({ data: variante }, { status: 200 });
+  } catch (error) {
+    console.error('Error GET /api/variantes/[id]:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 });
 
 export const PUT = withAuth(async (req: NextRequest, _payload: unknown, { params }: { params: Promise<{ id: string }> }) => {
