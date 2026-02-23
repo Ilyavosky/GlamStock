@@ -7,15 +7,14 @@ import Button from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import EditProductoModal from './Editproducto';
 import InfoProductoModal from './Infoproducto';
-import NuevoProductoForm, { FormData, FormErrors, Sucursal, validateField, buildFormErrors } from './Nuevoproducto';
+import AddVarianteModal from './AddVarianteModal';
+import SelectVarianteModal from './SelectVarianteModal';
+import EditVarianteModal from './EditVarianteModal';
 import type { Producto, ProductoFila } from '@/types/inventario-view.types';
 import styles from './page.module.css';
 import formStyles from './form.module.css';
 
-const FORM_INITIAL: FormData = {
-  nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
-  precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '',
-};
+export interface Sucursal { id_sucursal: number; nombre_lugar: string; ubicacion: string; }
 
 const ITEMS_PER_PAGE = 20;
 
@@ -30,15 +29,22 @@ export default function InventarioPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleteNombre, setDeleteNombre] = useState('');
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [submitting, setSubmitting] = useState(false);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [infoId, setInfoId] = useState<number | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
+
+  // New variant modal state
+  const [showAddVarianteModal, setShowAddVarianteModal] = useState(false);
+  const [addVarianteProductId, setAddVarianteProductId] = useState<number | null>(null);
+  const [addVarianteProductoNombre, setAddVarianteProductoNombre] = useState('');
+
+  // Edit variant global state
+  const [showSelectVarianteModal, setShowSelectVarianteModal] = useState(false);
+  const [selectVarianteProductId, setSelectVarianteProductId] = useState<number | null>(null);
+  const [showEditVarianteModal, setShowEditVarianteModal] = useState(false);
+  const [editVarianteId, setEditVarianteId] = useState<number | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -105,15 +111,7 @@ export default function InventarioPage() {
     ));
   }, [productos]);
 
-  const handleOpenModal = () => {
-    setFormData(FORM_INITIAL);
-    setFormErrors({});
-    setShowModal(true);
-  };
 
-  const handleCloseModal = () => {
-    if (!submitting) { setShowModal(false); setFormErrors({}); }
-  };
 
   const handleOpenEdit = (id: number) => {
     setEditId(id);
@@ -145,40 +143,6 @@ export default function InventarioPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setFormErrors((prev) => ({ ...prev, [name]: validateField(name as keyof FormData, value, formData.precio_adquisicion, true) }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors = buildFormErrors(formData, true, true);
-    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
-
-    setSubmitting(true);
-    try {
-      const body = {
-        nombre: formData.nombre.trim(),
-        sku: formData.sku.trim() || undefined,
-      };
-      const res = await fetch('/api/productos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al crear el producto');
-      showToast('Producto agregado correctamente', 'success');
-      handleCloseModal();
-      fetchProductos();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error al crear el producto', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -211,8 +175,19 @@ export default function InventarioPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={() => { setDeleteId(row.id); setDeleteNombre(row.nombre); setOpenMenuId(null); }}>Eliminar</button>
-              <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar</button>
-              <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info</button>
+              <button className={styles.dropdownItem} onClick={() => { 
+                setAddVarianteProductId(row.id);
+                setAddVarianteProductoNombre(row.nombre);
+                setShowAddVarianteModal(true);
+                setOpenMenuId(null);
+              }}>Agregar variante</button>
+              <button className={styles.dropdownItem} onClick={() => { 
+                setSelectVarianteProductId(row.id);
+                setShowSelectVarianteModal(true);
+                setOpenMenuId(null);
+              }}>Editar variantes</button>
+              <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar producto</button>
+              <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info general</button>
             </div>
           )}
         </div>
@@ -235,7 +210,6 @@ export default function InventarioPage() {
           <h1 className={styles.title}>General</h1>
           <p className={styles.subtitle}>Total productos: {filtered.length}</p>
         </div>
-        <Button onClick={handleOpenModal}>+ Agregar producto</Button>
       </div>
 
       {loading ? (
@@ -266,18 +240,24 @@ export default function InventarioPage() {
         </div>
       </Dialog>
 
-      <Dialog open={showModal} onClose={handleCloseModal} title="Nuevo producto">
-        <NuevoProductoForm
-          formData={formData}
-          formErrors={formErrors}
-          sucursales={sucursales}
-          submitting={submitting}
-          isCreationMode={true}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          onCancel={handleCloseModal}
-        />
-      </Dialog>
+      <SelectVarianteModal
+        open={showSelectVarianteModal}
+        productoId={selectVarianteProductId}
+        onClose={() => setShowSelectVarianteModal(false)}
+        onSelect={(idVar) => {
+            setShowSelectVarianteModal(false);
+            setEditVarianteId(idVar);
+            setShowEditVarianteModal(true);
+        }}
+      />
+
+      <EditVarianteModal
+        open={showEditVarianteModal}
+        varianteId={editVarianteId}
+        onClose={() => setShowEditVarianteModal(false)}
+        onSuccess={fetchProductos}
+        showToast={showToast}
+      />
 
       <EditProductoModal
         open={showEditModal}
@@ -291,6 +271,16 @@ export default function InventarioPage() {
         open={showInfoModal}
         productoId={infoId}
         onClose={() => { setShowInfoModal(false); setInfoId(null); }}
+      />
+      
+      <AddVarianteModal
+        open={showAddVarianteModal}
+        productoId={addVarianteProductId}
+        productoNombre={addVarianteProductoNombre}
+        sucursales={sucursales}
+        onClose={() => setShowAddVarianteModal(false)}
+        onSuccess={fetchProductos}
+        showToast={showToast}
       />
     </div>
   );

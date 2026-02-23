@@ -106,7 +106,6 @@ LEFT JOIN ventas_bajas  vb ON vb.id_variante = v.id_variante
                            AND vb.id_sucursal = s.id_sucursal
 WHERE s.activo = TRUE
 GROUP BY
-GROUP BY
   s.id_sucursal, s.nombre_lugar,
   pm.id_producto_maestro, pm.sku, pm.nombre,
   v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta

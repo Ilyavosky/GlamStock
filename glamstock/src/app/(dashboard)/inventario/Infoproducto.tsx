@@ -15,7 +15,9 @@ interface InfoProductoModalProps {
 export default function InfoProductoModal({ open, productoId, onClose }: InfoProductoModalProps) {
   const { producto, inventarioInfo, loading } = useProductoInfo(open, productoId);
 
-  const variante = producto?.variantes[0] ?? null;
+  // Calculate total ranges or sums from all variants
+  const totalValorOriginal = producto?.variantes.reduce((acc, v) => acc + Number(v.precio_adquisicion), 0) || 0;
+  const totalValorVenta = producto?.variantes.reduce((acc, v) => acc + Number(v.precio_venta_etiqueta), 0) || 0;
 
   return (
     <Dialog open={open} onClose={onClose} title="Información del producto">
@@ -33,7 +35,7 @@ export default function InfoProductoModal({ open, productoId, onClose }: InfoPro
             </div>
             <div className={styles.field}>
               <p className={styles.label}>SKU</p>
-              <p className={styles.value}>{producto.sku}</p>
+              <p className={styles.value}>{producto.sku || '—'}</p>
             </div>
           </div>
 
@@ -41,33 +43,15 @@ export default function InfoProductoModal({ open, productoId, onClose }: InfoPro
 
           <div className={styles.row}>
             <div className={styles.field}>
-              <p className={styles.label}>Modelo</p>
-              <p className={styles.value}>{variante?.modelo || '—'}</p>
-            </div>
-            <div className={styles.field}>
-              <p className={styles.label}>Color</p>
-              <p className={styles.value}>{variante?.color || '—'}</p>
-            </div>
-          </div>
-
-          <div className={styles.field}>
-            <p className={styles.label}>Código de barras</p>
-            <p className={styles.value}>{variante?.codigo_barras || '—'}</p>
-          </div>
-
-          <hr className={styles.divider} />
-
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <p className={styles.label}>Valor original</p>
+              <p className={styles.label}>Valor original acumulado</p>
               <p className={styles.value}>
-                {variante ? `$${Number(variante.precio_adquisicion).toLocaleString()}` : '—'}
+                ${totalValorOriginal.toLocaleString()}
               </p>
             </div>
             <div className={styles.field}>
-              <p className={styles.label}>Valor venta</p>
+              <p className={styles.label}>Valor venta acumulado</p>
               <p className={styles.value}>
-                {variante ? `$${Number(variante.precio_venta_etiqueta).toLocaleString()}` : '—'}
+                ${totalValorVenta.toLocaleString()}
               </p>
             </div>
           </div>

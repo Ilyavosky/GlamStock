@@ -93,6 +93,7 @@ export function useDashboardData(): UseDashboardDataResult {
         totalStock: p.variantes.reduce((acc, v) => acc + (stockMap.get(v.id_variante) ?? 0), 0),
         valorOriginal: p.variantes.reduce((a, v) => a + Number(v.precio_adquisicion), 0),
         valorVenta: p.variantes.reduce((a, v) => a + Number(v.precio_venta_etiqueta), 0),
+        cantidadVariantes: p.variantes.length,
       }));
       setProductos(filas);
 

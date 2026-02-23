@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import SucursalCard, { InventarioItem } from './SucursalCard';
-import EditProductoModal from '../inventario/Editproducto';
-import InfoProductoModal from '../inventario/Infoproducto';
+import EditVarianteModal from '../inventario/EditVarianteModal';
+import InfoVarianteModal from '../inventario/InfoVarianteModal';
+import AjusteStockModal from '../inventario/AjusteStockModal';
 import type { Sucursal, SucursalConInventario, VarianteProducto, Producto } from '@/types/sucursales-view.types';
 import styles from './page.module.css';
 
@@ -20,11 +21,16 @@ export default function SucursalesPage() {
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  const [editId, setEditId] = useState<number | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditVarianteModal, setShowEditVarianteModal] = useState(false);
+  const [editVarianteId, setEditVarianteId] = useState<number | null>(null);
 
-  const [infoId, setInfoId] = useState<number | null>(null);
-  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showInfoVarianteModal, setShowInfoVarianteModal] = useState(false);
+  const [infoVarianteId, setInfoVarianteId] = useState<number | null>(null);
+  const [infoInventarioId, setInfoInventarioId] = useState<number | null>(null);
+
+  const [showAjusteStockModal, setShowAjusteStockModal] = useState(false);
+  const [ajusteVarianteId, setAjusteVarianteId] = useState<number | null>(null);
+  const [ajusteSucursalId, setAjusteSucursalId] = useState<number | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -100,6 +106,8 @@ export default function SucursalesPage() {
     ));
   }, [sucursales]);
 
+  // We keep handleDelete targeting the Master Product for now if that's what Delete button means
+  // Actually on SucursalCard we probably shouldn't allow deleting the product from there, but we keep the callback intact.
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -120,19 +128,9 @@ export default function SucursalesPage() {
     }
   };
 
-  const handleOpenEdit = (idVariante: number) => {
-    const idProducto = varianteToProductoMap.get(idVariante);
-    if (!idProducto) { showToast('No se encontró el producto', 'error'); return; }
-    setEditId(idProducto);
-    setShowEditModal(true);
-  };
-
-  const handleOpenInfo = (idVariante: number) => {
-    const idProducto = varianteToProductoMap.get(idVariante);
-    if (!idProducto) { showToast('No se encontró el producto', 'error'); return; }
-    setInfoId(idProducto);
-    setShowInfoModal(true);
-  };
+  const handleOpenEditVariante = (idV: number, idI: number) => { setEditVarianteId(idV); setShowEditVarianteModal(true); };
+  const handleOpenInfoVariante = (idV: number, idI: number) => { setInfoVarianteId(idV); setInfoInventarioId(idI); setShowInfoVarianteModal(true); };
+  const handleOpenAjusteStock = (idV: number, idS: number) => { setAjusteVarianteId(idV); setAjusteSucursalId(idS); setShowAjusteStockModal(true); };
 
   return (
     <div>
@@ -174,9 +172,13 @@ export default function SucursalesPage() {
               ubicacion={s.ubicacion}
               inventario={s.inventario}
               loading={s.loadingInventario}
-              onDelete={(idVariante) => setDeleteTarget(idVariante)}
-              onEdit={handleOpenEdit}
-              onInfo={handleOpenInfo}
+              onDelete={(idVariante) => {
+                  const idProducto = varianteToProductoMap.get(idVariante);
+                  if (idProducto) setDeleteTarget(idProducto);
+              }}
+              onEdit={handleOpenEditVariante}
+              onInfo={handleOpenInfoVariante}
+              onAjustar={handleOpenAjusteStock}
             />
           ))}
         </div>
@@ -197,18 +199,28 @@ export default function SucursalesPage() {
         </div>
       )}
 
-      <EditProductoModal
-        open={showEditModal}
-        productoId={editId}
-        onClose={() => { setShowEditModal(false); setEditId(null); }}
+      <EditVarianteModal
+        open={showEditVarianteModal}
+        varianteId={editVarianteId}
+        onClose={() => setShowEditVarianteModal(false)}
         onSuccess={fetchAll}
         showToast={showToast}
       />
 
-      <InfoProductoModal
-        open={showInfoModal}
-        productoId={infoId}
-        onClose={() => { setShowInfoModal(false); setInfoId(null); }}
+      <InfoVarianteModal
+        open={showInfoVarianteModal}
+        varianteId={infoVarianteId}
+        inventarioId={infoInventarioId}
+        onClose={() => setShowInfoVarianteModal(false)}
+      />
+
+      <AjusteStockModal
+        open={showAjusteStockModal}
+        varianteId={ajusteVarianteId}
+        sucursalId={ajusteSucursalId}
+        onClose={() => setShowAjusteStockModal(false)}
+        onSuccess={fetchAll}
+        showToast={showToast}
       />
     </div>
   );

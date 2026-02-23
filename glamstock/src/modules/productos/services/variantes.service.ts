@@ -92,6 +92,7 @@ export class VariantesService {
     if (data.modelo !== undefined) updateData.modelo = data.modelo?.trim().toUpperCase() ?? null;
     if (data.color !== undefined) updateData.color = data.color?.trim().toUpperCase() ?? null;
     if (data.codigo_barras !== undefined) updateData.codigo_barras = data.codigo_barras.trim();
+    if (data.sku_variante !== undefined) updateData.sku_variante = data.sku_variante.trim();
 
     return await VariantesRepository.update(id, updateData);
   }

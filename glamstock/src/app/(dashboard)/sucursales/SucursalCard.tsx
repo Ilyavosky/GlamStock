@@ -24,11 +24,12 @@ interface SucursalCardProps {
   inventario: InventarioItem[];
   loading: boolean;
   onDelete: (idVariante: number) => void;
-  onEdit: (idVariante: number) => void;
-  onInfo: (idVariante: number) => void;
+  onEdit: (idVariante: number, idInventario: number) => void;
+  onInfo: (idVariante: number, idInventario: number) => void;
+  onAjustar: (idVariante: number, idSucursal: number) => void;
 }
 
-export default function SucursalCard({ nombre, ubicacion, inventario, loading, onDelete, onEdit, onInfo }: SucursalCardProps) {
+export default function SucursalCard({ nombre, ubicacion, inventario, loading, onDelete, onEdit, onInfo, onAjustar }: SucursalCardProps) {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -55,6 +56,8 @@ export default function SucursalCard({ nombre, ubicacion, inventario, loading, o
               <tr>
                 <th className={styles.th}>SKU</th>
                 <th className={styles.th}>Productos</th>
+                <th className={styles.th}>Modelo</th>
+                <th className={styles.th}>Color</th>
                 <th className={styles.th}>Stock</th>
                 <th className={styles.th}>Valor original</th>
                 <th className={styles.th}>Valor venta</th>
@@ -66,6 +69,8 @@ export default function SucursalCard({ nombre, ubicacion, inventario, loading, o
                 <tr key={item.id_inventario} className={styles.tr}>
                   <td className={styles.td}>{item.sku_producto}</td>
                   <td className={styles.td}>{item.nombre_producto}</td>
+                  <td className={styles.td}>{item.modelo || '—'}</td>
+                  <td className={styles.td}>{item.color || '—'}</td>
                   <td className={styles.td}>{item.stock_actual}</td>
                   <td className={styles.td}>
                     {item.precio_adquisicion != null
@@ -96,12 +101,17 @@ export default function SucursalCard({ nombre, ubicacion, inventario, loading, o
                           >Eliminar</button>
                           <button
                             className={styles.dropdownItem}
-                            onClick={() => { setOpenMenuId(null); onEdit(item.id_variante); }}
+                            onClick={() => { setOpenMenuId(null); onEdit(item.id_variante, item.id_inventario); }}
                           >Editar</button>
                           <button
                             className={styles.dropdownItem}
-                            onClick={() => { setOpenMenuId(null); onInfo(item.id_variante); }}
+                            onClick={() => { setOpenMenuId(null); onInfo(item.id_variante, item.id_inventario); }}
                           >Más info</button>
+                          <button
+                            className={`${styles.dropdownItem} ${styles.dropdownWarning}`}
+                            onClick={() => { setOpenMenuId(null); onAjustar(item.id_variante, item.id_sucursal); }}
+                            style={{ color: '#0ea5e9' }}
+                          >Ajustar stock</button>
                         </div>
                       )}
                     </div>

@@ -9,6 +9,27 @@ const updateStockSchema = z.object({
   stock_actual: z.coerce.number().int().nonnegative('El stock no puede ser negativo'),
 });
 
+export const GET = withAuth(async (req: NextRequest, _payload: unknown, { params }: { params: Promise<{ id: string }> }) => {
+  try {
+    const { id } = await params;
+    const idValidation = idSchema.safeParse(id);
+
+    if (!idValidation.success) {
+      return NextResponse.json({ error: 'ID de inventario inválido' }, { status: 400 });
+    }
+
+    const { rows } = await db.query('SELECT * FROM inventario_sucursal WHERE id_inventario = $1', [idValidation.data]);
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'Registro de inventario no encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json({ data: rows[0] });
+  } catch (error) {
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
+});
+
 export const PUT = withAuth(async (req: NextRequest, _payload: unknown, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
