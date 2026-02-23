@@ -6,6 +6,7 @@ export const MOTIVOS_VALIDOS = [
   'Baja por merma / daño',
   'Ajuste de inventario (Sobrante)',
   'Ajuste de inventario (Faltante)',
+  'Ingreso por adquisición / compra',
 ] as const;
 
 export type MotivoValido = typeof MOTIVOS_VALIDOS[number];
