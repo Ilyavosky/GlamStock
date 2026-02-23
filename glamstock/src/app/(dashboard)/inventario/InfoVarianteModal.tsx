@@ -22,18 +22,25 @@ export default function InfoVarianteModal({ open, varianteId, inventarioId, onCl
       try {
         const res = await fetch(`/api/variantes/${varianteId}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Error al cargar variante');
-        const v = (await res.json()).data || await res.json();
+        const vData = await res.json();
+        const v = vData.data || vData;
         
         let pName = 'Producto Maestro';
         if (v.id_producto_maestro) {
            const pRes = await fetch(`/api/productos/${v.id_producto_maestro}`, { credentials: 'include' });
-           if (pRes.ok) pName = (await pRes.json()).nombre || pName;
+           if (pRes.ok) {
+             const pJson = await pRes.json();
+             pName = pJson.nombre || pName;
+           }
         }
 
         let invStock = 0;
         if (inventarioId) {
            const resInv = await fetch(`/api/inventario/${inventarioId}`, { credentials: 'include' });
-           if (resInv.ok) invStock = (await resInv.json()).stock_actual || 0;
+           if (resInv.ok) {
+             const invJson = await resInv.json();
+             invStock = (invJson.data?.stock_actual ?? invJson.stock_actual) || 0;
+           }
         }
 
         if (active) {
