@@ -58,77 +58,77 @@ INSERT INTO productos_maestros (sku, nombre) VALUES
 ON CONFLICT (sku) DO NOTHING;
 
 -- Variantes
-INSERT INTO variantes (id_producto_maestro, codigo_barras, modelo, color, precio_adquisicion, precio_venta_etiqueta) VALUES
+INSERT INTO variantes (id_producto_maestro, sku_variante, codigo_barras, modelo, color, precio_adquisicion, precio_venta_etiqueta) VALUES
 -- Bolsa Kelly
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'CB-BOL001-001', '25cm', 'Negro', 1200.00, 2499.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'CB-BOL001-002', '25cm', 'Camel', 1200.00, 2499.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'CB-BOL001-003', '32cm', 'Negro', 1400.00, 2899.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'CB-BOL001-004', '32cm', 'Vino', 1400.00, 2899.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'BOL-001-NEG-25CM', 'CB-BOL001-001', '25cm', 'Negro', 1200.00, 2499.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'BOL-001-CAM-25CM', 'CB-BOL001-002', '25cm', 'Camel', 1200.00, 2499.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'BOL-001-NEG-32CM', 'CB-BOL001-003', '32cm', 'Negro', 1400.00, 2899.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-001'), 'BOL-001-VIN-32CM', 'CB-BOL001-004', '32cm', 'Vino', 1400.00, 2899.00),
 
 -- Bolsa Birkin
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-002'), 'CB-BOL002-001', '30cm', 'Negro', 1500.00, 3199.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-002'), 'CB-BOL002-002', '30cm', 'Beige', 1500.00, 3199.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-002'), 'CB-BOL002-003', '35cm', 'Café', 1700.00, 3599.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-002'), 'BOL-002-NEG-30CM', 'CB-BOL002-001', '30cm', 'Negro', 1500.00, 3199.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-002'), 'BOL-002-BEI-30CM', 'CB-BOL002-002', '30cm', 'Beige', 1500.00, 3199.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-002'), 'BOL-002-CAF-35CM', 'CB-BOL002-003', '35cm', 'Café', 1700.00, 3599.00),
 
 -- Bolsa Tote Canvas
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-003'), 'CB-BOL003-001', 'Estándar', 'Natural', 350.00, 799.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-003'), 'CB-BOL003-002', 'Estándar', 'Negro', 350.00, 799.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-003'), 'CB-BOL003-003', 'Grande', 'Natural', 420.00, 950.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-003'), 'BOL-003-NAT-ESTND', 'CB-BOL003-001', 'Estándar', 'Natural', 350.00, 799.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-003'), 'BOL-003-NEG-ESTND', 'CB-BOL003-002', 'Estándar', 'Negro', 350.00, 799.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-003'), 'BOL-003-NAT-GRAND', 'CB-BOL003-003', 'Grande', 'Natural', 420.00, 950.00),
 
 -- Bolsa Crossbody Mini
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-004'), 'CB-BOL004-001', 'Mini', 'Rosa', 480.00, 1099.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-004'), 'CB-BOL004-002', 'Mini', 'Negro', 480.00, 1099.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-004'), 'CB-BOL004-003', 'Mini', 'Blanco', 480.00, 1099.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-004'), 'BOL-004-ROS-MINI', 'CB-BOL004-001', 'Mini', 'Rosa', 480.00, 1099.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-004'), 'BOL-004-NEG-MINI', 'CB-BOL004-002', 'Mini', 'Negro', 480.00, 1099.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-004'), 'BOL-004-BLA-MINI', 'CB-BOL004-003', 'Mini', 'Blanco', 480.00, 1099.00),
 
 -- Bolsa Shopper Grande
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-005'), 'CB-BOL005-001', 'Estándar', 'Camel', 600.00, 1299.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-005'), 'CB-BOL005-002', 'Estándar', 'Negro', 600.00, 1299.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-005'), 'BOL-005-CAM-ESTND', 'CB-BOL005-001', 'Estándar', 'Camel', 600.00, 1299.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='BOL-005'), 'BOL-005-NEG-ESTND', 'CB-BOL005-002', 'Estándar', 'Negro', 600.00, 1299.00),
 
 -- Cartera Bifold
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-001'), 'CB-CAR001-001', 'Clásica', 'Negro', 280.00, 599.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-001'), 'CB-CAR001-002', 'Clásica', 'Café', 280.00, 599.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-001'), 'CB-CAR001-003', 'Clásica', 'Vino', 280.00, 599.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-001'), 'CAR-001-NEG-CLSIC', 'CB-CAR001-001', 'Clásica', 'Negro', 280.00, 599.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-001'), 'CAR-001-CAF-CLSIC', 'CB-CAR001-002', 'Clásica', 'Café', 280.00, 599.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-001'), 'CAR-001-VIN-CLSIC', 'CB-CAR001-003', 'Clásica', 'Vino', 280.00, 599.00),
 
 -- Cartera Zip Around
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-002'), 'CB-CAR002-001', 'Estándar', 'Negro', 320.00, 699.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-002'), 'CB-CAR002-002', 'Estándar', 'Rosa', 320.00, 699.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-002'), 'CAR-002-NEG-ESTND', 'CB-CAR002-001', 'Estándar', 'Negro', 320.00, 699.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-002'), 'CAR-002-ROS-ESTND', 'CB-CAR002-002', 'Estándar', 'Rosa', 320.00, 699.00),
 
 -- Cartera Slim
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-003'), 'CB-CAR003-001', 'Slim', 'Negro', 220.00, 449.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-003'), 'CB-CAR003-002', 'Slim', 'Café', 220.00, 449.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-003'), 'CAR-003-NEG-SLIM', 'CB-CAR003-001', 'Slim', 'Negro', 220.00, 449.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CAR-003'), 'CAR-003-CAF-SLIM', 'CB-CAR003-002', 'Slim', 'Café', 220.00, 449.00),
 
 -- Mochila Urbana
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-001'), 'CB-MOC001-001', 'Mediana', 'Negro', 700.00, 1499.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-001'), 'CB-MOC001-002', 'Mediana', 'Gris', 700.00, 1499.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-001'), 'CB-MOC001-003', 'Grande', 'Negro', 850.00, 1799.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-001'), 'MOC-001-NEG-MEDIA', 'CB-MOC001-001', 'Mediana', 'Negro', 700.00, 1499.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-001'), 'MOC-001-GRI-MEDIA', 'CB-MOC001-002', 'Mediana', 'Gris', 700.00, 1499.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-001'), 'MOC-001-NEG-GRAND', 'CB-MOC001-003', 'Grande', 'Negro', 850.00, 1799.00),
 
 -- Mochila Casual
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-002'), 'CB-MOC002-001', 'Estándar', 'Rosa', 450.00, 999.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-002'), 'CB-MOC002-002', 'Estándar', 'Negro', 450.00, 999.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-002'), 'MOC-002-ROS-ESTND', 'CB-MOC002-001', 'Estándar', 'Rosa', 450.00, 999.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MOC-002'), 'MOC-002-NEG-ESTND', 'CB-MOC002-002', 'Estándar', 'Negro', 450.00, 999.00),
 
 -- Cinturón Clásico Piel
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CB-CIN001-001', 'Talla S', 'Negro', 180.00, 399.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CB-CIN001-002', 'Talla M', 'Negro', 180.00, 399.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CB-CIN001-003', 'Talla L', 'Negro', 180.00, 399.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CB-CIN001-004', 'Talla M', 'Café', 180.00, 399.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CIN-001-NEG-TALLA', 'CB-CIN001-001', 'Talla S', 'Negro', 180.00, 399.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CIN-001-NEG-TALLM', 'CB-CIN001-002', 'Talla M', 'Negro', 180.00, 399.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CIN-001-NEG-TALLL', 'CB-CIN001-003', 'Talla L', 'Negro', 180.00, 399.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-001'), 'CIN-001-CAF-TALLM', 'CB-CIN001-004', 'Talla M', 'Café', 180.00, 399.00),
 
 -- Cinturón Reversible
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-002'), 'CB-CIN002-001', 'Talla S', 'Negro/Café', 200.00, 449.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-002'), 'CB-CIN002-002', 'Talla M', 'Negro/Café', 200.00, 449.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-002'), 'CB-CIN002-003', 'Talla L', 'Negro/Café', 200.00, 449.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-002'), 'CIN-002-NEG-TALLA', 'CB-CIN002-001', 'Talla S', 'Negro/Café', 200.00, 449.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-002'), 'CIN-002-NEG-TALLM', 'CB-CIN002-002', 'Talla M', 'Negro/Café', 200.00, 449.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='CIN-002'), 'CIN-002-NEG-TALLL', 'CB-CIN002-003', 'Talla L', 'Negro/Café', 200.00, 449.00),
 
 -- Monedero Redondo
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-001'), 'CB-MON001-001', 'Estándar', 'Negro', 120.00, 279.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-001'), 'CB-MON001-002', 'Estándar', 'Rosa', 120.00, 279.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-001'), 'CB-MON001-003', 'Estándar', 'Vino', 120.00, 279.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-001'), 'MON-001-NEG-ESTND', 'CB-MON001-001', 'Estándar', 'Negro', 120.00, 279.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-001'), 'MON-001-ROS-ESTND', 'CB-MON001-002', 'Estándar', 'Rosa', 120.00, 279.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-001'), 'MON-001-VIN-ESTND', 'CB-MON001-003', 'Estándar', 'Vino', 120.00, 279.00),
 
 -- Monedero Rectangular
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-002'), 'CB-MON002-001', 'Estándar', 'Negro', 130.00, 299.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-002'), 'CB-MON002-002', 'Estándar', 'Café', 130.00, 299.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-002'), 'MON-002-NEG-ESTND', 'CB-MON002-001', 'Estándar', 'Negro', 130.00, 299.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='MON-002'), 'MON-002-CAF-ESTND', 'CB-MON002-002', 'Estándar', 'Café', 130.00, 299.00),
 
 -- Kit Bolsa + Cartera
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='KIT-001'), 'CB-KIT001-001', 'Set Básico', 'Negro', 900.00, 1899.00),
-((SELECT id_producto_maestro FROM productos_maestros WHERE sku='KIT-001'), 'CB-KIT001-002', 'Set Básico', 'Camel', 900.00, 1899.00)
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='KIT-001'), 'KIT-001-NEG-SETBS', 'CB-KIT001-001', 'Set Básico', 'Negro', 900.00, 1899.00),
+((SELECT id_producto_maestro FROM productos_maestros WHERE sku='KIT-001'), 'KIT-001-CAM-SETBS', 'CB-KIT001-002', 'Set Básico', 'Camel', 900.00, 1899.00)
 ON CONFLICT (codigo_barras) DO NOTHING;
 
 -- Inventario por sucursal (Tienda Centro)
