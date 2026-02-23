@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
-import NuevoProductoForm, { FormData, FormErrors, validateField, buildFormErrors } from './Nuevoproducto';
+import NuevoProductoForm, { FormErrors, validateField, buildFormErrors } from './Nuevoproducto';
+import type { FormData } from './Nuevoproducto';
+import { useProductoEdit } from '@/hooks/useProductoEdit';
 import formStyles from './form.module.css';
 
 interface EditProductoModalProps {
@@ -13,11 +15,6 @@ interface EditProductoModalProps {
   showToast: (msg: string, type: 'success' | 'error') => void;
 }
 
-const FORM_EMPTY: FormData = {
-  nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
-  precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '',
-};
-
 export default function EditProductoModal({
   open,
   productoId,
@@ -25,60 +22,15 @@ export default function EditProductoModal({
   onSuccess,
   showToast,
 }: EditProductoModalProps) {
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState<FormData>(FORM_EMPTY);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [varianteId, setVarianteId] = useState<number | null>(null);
-  const [inventarioId, setInventarioId] = useState<number | null>(null);
 
-  const fetchProducto = useCallback(async (id: number) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/productos/${id}`, { credentials: 'include' });
-      if (!res.ok) throw new Error();
-      const producto = await res.json();
-      const variante = producto.variantes[0] ?? null;
-      setVarianteId(variante?.id_variante ?? null);
-
-      let inventario = null;
-      if (variante) {
-        const resSuc = await fetch('/api/inventario/sucursales', { credentials: 'include' });
-        if (resSuc.ok) {
-          const { data: sucursales = [] } = await resSuc.json();
-          for (const s of sucursales) {
-            const r = await fetch(`/api/inventario?sucursal_id=${s.id_sucursal}`, { credentials: 'include' });
-            if (!r.ok) continue;
-            const { data = [] } = await r.json();
-            const found = data.find((item: { id_variante: number }) => item.id_variante === variante.id_variante);
-            if (found) { inventario = found; break; }
-          }
-        }
-      }
-
-      setInventarioId(inventario?.id_inventario ?? null);
-      setFormData({
-        nombre: producto.nombre,
-        sku: producto.sku,
-        modelo: variante?.modelo ?? '',
-        color: variante?.color ?? '',
-        codigo_barras: variante?.codigo_barras ?? '',
-        precio_adquisicion: variante ? String(variante.precio_adquisicion) : '',
-        precio_venta_etiqueta: variante ? String(variante.precio_venta_etiqueta) : '',
-        sucursal_id: '',
-        stock_inicial: inventario ? String(inventario.stock_actual) : '0',
-      });
-    } catch {
-      showToast('Error al cargar el producto', 'error');
-      onClose();
-    } finally {
-      setLoading(false);
-    }
-  }, [onClose, showToast]);
-
-  useEffect(() => {
-    if (open && productoId) fetchProducto(productoId);
-  }, [open, productoId, fetchProducto]);
+  const { formData, setFormData, varianteId, inventarioId, loading } = useProductoEdit(
+    open,
+    productoId,
+    onClose,
+    showToast,
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

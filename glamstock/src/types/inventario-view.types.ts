@@ -42,3 +42,28 @@ export interface InventarioInfo {
   sucursal: string;
   stock_actual: number;
 }
+
+export interface ProductoFormData {
+  nombre: string;
+  sku: string;
+  modelo: string;
+  color: string;
+  codigo_barras: string;
+  precio_adquisicion: string;
+  precio_venta_etiqueta: string;
+  sucursal_id: string;
+  stock_inicial: string;
+}
+
+export interface ProductoFormErrors {
+  nombre?: string;
+  precio_adquisicion?: string;
+  precio_venta_etiqueta?: string;
+  sucursal_id?: string;
+}
+
+export interface SucursalForm {
+  id_sucursal: number;
+  nombre_lugar: string;
+  ubicacion: string;
+}

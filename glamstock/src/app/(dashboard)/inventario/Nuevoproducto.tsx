@@ -1,5 +1,8 @@
 import Button from '@/components/ui/Button';
 import styles from './form.module.css';
+import type { ProductoFormData as FormData, ProductoFormErrors as FormErrors, SucursalForm as Sucursal } from '@/types/inventario-view.types';
+export type { FormData, FormErrors };
+export type { Sucursal };
 
 export function validateField(
   name: keyof FormData,
@@ -36,30 +39,7 @@ export function buildFormErrors(formData: FormData, includeSucursal = false): Fo
   return errors;
 }
 
-export interface Sucursal {
-  id_sucursal: number;
-  nombre_lugar: string;
-  ubicacion: string;
-}
 
-export interface FormData {
-  nombre: string;
-  sku: string;
-  modelo: string;
-  color: string;
-  codigo_barras: string;
-  precio_adquisicion: string;
-  precio_venta_etiqueta: string;
-  sucursal_id: string;
-  stock_inicial: string;
-}
-
-export interface FormErrors {
-  nombre?: string;
-  precio_adquisicion?: string;
-  precio_venta_etiqueta?: string;
-  sucursal_id?: string;
-}
 
 interface NuevoProductoFormProps {
   formData: FormData;
