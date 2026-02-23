@@ -13,6 +13,7 @@ SELECT
   pm.id_producto_maestro,
   pm.nombre           AS nombre_producto,
   pm.sku,
+  v.sku_variante,
   v.modelo,
   v.color,
   v.precio_adquisicion,
@@ -35,7 +36,9 @@ SELECT
   pm.id_producto_maestro,
   pm.sku,
   pm.nombre                                                                     AS nombre_producto,
+  pm.nombre                                                                     AS nombre_producto,
   v.id_variante,
+  v.sku_variante,
   v.modelo,
   v.color,
   v.precio_adquisicion,
@@ -56,7 +59,7 @@ JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
 LEFT JOIN ventas_bajas  vb ON vb.id_variante = v.id_variante
 GROUP BY
   pm.id_producto_maestro, pm.sku, pm.nombre,
-  v.id_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
+  v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
 WITH DATA;
 
 CREATE UNIQUE INDEX idx_ranking_global_variante
@@ -77,7 +80,9 @@ SELECT
   pm.id_producto_maestro,
   pm.sku,
   pm.nombre                                                                     AS nombre_producto,
+  pm.nombre                                                                     AS nombre_producto,
   v.id_variante,
+  v.sku_variante,
   v.modelo,
   v.color,
   v.precio_adquisicion,
@@ -103,9 +108,10 @@ LEFT JOIN ventas_bajas  vb ON vb.id_variante = v.id_variante
                            AND vb.id_sucursal = s.id_sucursal
 WHERE s.activo = TRUE
 GROUP BY
+GROUP BY
   s.id_sucursal, s.nombre_lugar,
   pm.id_producto_maestro, pm.sku, pm.nombre,
-  v.id_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
+  v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
 WITH DATA;
 
 CREATE UNIQUE INDEX idx_ranking_suc_variante_suc

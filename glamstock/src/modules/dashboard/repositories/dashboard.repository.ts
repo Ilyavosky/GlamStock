@@ -178,6 +178,7 @@ function mapRankingProducto(r: Record<string, unknown>): RankingProducto {
     sku: r.sku as string,
     nombre_producto: r.nombre_producto as string,
     id_variante: Number(r.id_variante),
+    sku_variante: r.sku_variante as string,
     modelo: r.modelo as string | null,
     color: r.color as string | null,
     precio_adquisicion: Number(r.precio_adquisicion),

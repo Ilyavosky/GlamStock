@@ -34,6 +34,7 @@ export interface RankingProducto {
   sku: string;
   nombre_producto: string;
   id_variante: number;
+  sku_variante: string;
   modelo: string | null;
   color: string | null;
   precio_adquisicion: number;

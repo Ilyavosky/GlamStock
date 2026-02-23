@@ -9,7 +9,7 @@ export class InventarioRepository {
     const query = `
       SELECT 
         i.id_inventario, i.id_variante, i.id_sucursal, i.stock_actual, i.updated_at,
-        p.sku as sku_producto, p.nombre as nombre_producto,
+        v.sku_variante as sku_producto, p.nombre as nombre_producto,
         v.codigo_barras, v.modelo, v.color,
         v.precio_adquisicion,
         v.precio_venta_etiqueta as precio_venta

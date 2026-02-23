@@ -3,6 +3,7 @@ export interface VentaDetallada {
   fecha_hora: string;
   nombre_producto: string;
   sku: string;
+  sku_variante: string;
   modelo: string | null;
   color: string | null;
   nombre_sucursal: string;

@@ -155,7 +155,7 @@ export class SucursalesRepository {
     const query = `
         SELECT
             i.id_inventario, i.id_variante, i.id_sucursal, i.stock_actual, i.updated_at,
-            p.sku AS sku_producto, p.nombre AS nombre_producto,
+            v.sku_variante AS sku_producto, p.nombre AS nombre_producto,
             v.codigo_barras, v.modelo, v.color,
             v.precio_adquisicion,
             v.precio_venta_etiqueta AS precio_venta

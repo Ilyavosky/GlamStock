@@ -12,6 +12,7 @@ export interface Venta {
 export interface VentaDetallada extends Venta {
   nombre_producto: string;
   sku: string;
+  sku_variante: string;
   modelo: string;
   color: string;
   nombre_sucursal: string;

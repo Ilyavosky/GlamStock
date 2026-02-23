@@ -76,7 +76,7 @@ export default function VentasPage() {
     const rows = ventas.map(v => [
       new Date(v.fecha_hora).toLocaleString('es-MX'),
       v.nombre_producto + (v.modelo ? ` (${v.modelo})` : '') + (v.color ? ` ${v.color}` : ''),
-      v.sku,
+      v.sku_variante,
       v.nombre_sucursal,
       v.cantidad,
       v.precio_venta_final,
@@ -212,7 +212,7 @@ export default function VentasPage() {
                     <td className={styles.td}>
                       <span className={styles.productName}>{v.nombre_producto}</span>
                       <span className={styles.productMeta}>
-                        {v.sku}{v.modelo ? ` · ${v.modelo}` : ''}{v.color ? ` · ${v.color}` : ''}
+                        {v.sku_variante}{v.modelo ? ` · ${v.modelo}` : ''}{v.color ? ` · ${v.color}` : ''}
                       </span>
                     </td>
                     <td className={styles.td}>{v.nombre_sucursal}</td>
