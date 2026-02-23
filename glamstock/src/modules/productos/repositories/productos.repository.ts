@@ -10,9 +10,6 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors/app-
 
 export class ProductosRepository {
 
-   // Crea un producto maestro individual.
-   // Si no se pasa SKU, se debe generar desde el service antes de llamar este método.
-
   static async create(data: CreateProductoInput): Promise<ProductoMaestro> {
     const query = `
       INSERT INTO productos_maestros (sku, nombre)
@@ -30,8 +27,6 @@ export class ProductosRepository {
     }
   }
 
-  
-   // Lista todos los productos maestros junto con sus variantes (LEFT JOIN).
   static async findAll(): Promise<ProductoConVariantes[]> {
     const query = `
       SELECT 
@@ -47,7 +42,6 @@ export class ProductosRepository {
     return ProductosRepository.agruparProductosConVariantes(rows);
   }
 
-   // Busca un producto por ID con todas sus variantes.   
   static async findById(id: number): Promise<ProductoConVariantes | null> {
     const query = `
       SELECT 
@@ -67,11 +61,7 @@ export class ProductosRepository {
     return productos[0];
   }
 
-   // Actualiza nombre y/o SKU de un producto maestro.
-   // Valida duplicados de SKU
   static async update(id: number, data: UpdateProductoInput): Promise<ProductoMaestro> {
-
-    // Construir SET dinámico solo con campos proporcionados
     const campos: string[] = [];
     const valores: unknown[] = [];
     let paramIndex = 1;
@@ -111,17 +101,13 @@ export class ProductosRepository {
     }
   }
 
-   // Elimina un producto maestro verificando que no tenga variantes con inventario.
-   // Si tiene variantes sin inventario, las elimina también en una transacción atómica.
   static async delete(id: number): Promise<void> {
-    // Verificar que el producto exista (antes de abrir la transacción)
     const existeQuery = `SELECT id_producto_maestro FROM productos_maestros WHERE id_producto_maestro = $1;`;
     const { rows: productoRows } = await db.query(existeQuery, [id]);
     if (productoRows.length === 0) {
       throw new NotFoundError('Producto maestro no encontrado');
     }
 
-    // Verificar que ninguna variante tenga inventario asociado
     const inventarioQuery = `
       SELECT v.id_variante 
       FROM variantes v
@@ -135,7 +121,6 @@ export class ProductosRepository {
       throw new ConflictError('No se puede eliminar: existen variantes con inventario asociado');
     }
 
-    // Eliminar variantes y producto en una sola transacción atómica
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
@@ -155,8 +140,6 @@ export class ProductosRepository {
     }
   }
 
-   // Agrupa las filas planas del JOIN en un array de ProductoConVariantes.
-   // Cada producto maestro agrupa sus variantes como un sub-array.
   static agruparProductosConVariantes(rows: Record<string, unknown>[]): ProductoConVariantes[] {
     const mapa = new Map<number, ProductoConVariantes>();
 
@@ -173,25 +156,27 @@ export class ProductosRepository {
         });
       }
 
-      // Solo agregar variante si existe (LEFT JOIN puede retornar nulls)
       if (row.id_variante != null) {
-        mapa.get(idProducto)!.variantes.push({
-          id_variante: row.id_variante as number,
-          id_producto_maestro: idProducto,
-          sku_variante: row.sku_variante as string,
-          codigo_barras: row.codigo_barras as string,
-          modelo: row.modelo as string | null,
-          color: row.color as string | null,
-          precio_adquisicion: row.precio_adquisicion as number,
-          precio_venta_etiqueta: row.precio_venta_etiqueta as number,
-          etiqueta_generada: row.etiqueta_generada as boolean,
-          created_at: row.variante_created_at as Date,
-          sucursal: row.sucursal as string | null,
-        });
+        const producto = mapa.get(idProducto)!;
+        const yaExiste = producto.variantes.some(v => v.id_variante === (row.id_variante as number));
+        if (!yaExiste) {
+          producto.variantes.push({
+            id_variante: row.id_variante as number,
+            id_producto_maestro: idProducto,
+            sku_variante: row.sku_variante as string,
+            codigo_barras: row.codigo_barras as string,
+            modelo: row.modelo as string | null,
+            color: row.color as string | null,
+            precio_adquisicion: row.precio_adquisicion as number,
+            precio_venta_etiqueta: row.precio_venta_etiqueta as number,
+            etiqueta_generada: row.etiqueta_generada as boolean,
+            created_at: row.variante_created_at as Date,
+            sucursal: row.sucursal as string | null,
+          });
+        }
       }
     }
 
     return Array.from(mapa.values());
   }
 }
-
