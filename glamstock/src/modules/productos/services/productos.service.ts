@@ -7,7 +7,7 @@ import {
   UpdateProductoInput,
   PaginatedProductResponse,
 } from '../types/productos.types';
-import { Variante } from '../types/variantes.types';
+import { Variante, CreateVarianteInput } from '../types/variantes.types';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors/app-error';
 import { crearProductoMaestroSchema } from '../schemas/producto.schema';
 
@@ -27,29 +27,31 @@ export class ProductosService {
       throw new ValidationError(validation.error.issues.map(i => i.message).join(', '));
     }
 
+    const parsedData = validation.data;
+
     // 2. Normalización y Reglas de Negocio
-    const variantesNormalizadas = data.variantes.map(v => {
+    const variantesNormalizadas = (parsedData.variantes || []).map(v => {
       // Regla: Precio venta >= Precio costo
       if (v.precio_venta_etiqueta < v.precio_adquisicion) {
         throw new ValidationError(`El precio de venta no puede ser menor al costo en la variante ${v.codigo_barras || ''}`);
       }
 
-     return {
-      ...v,
-      modelo: v.modelo ? v.modelo.trim().toUpperCase() : null,
-      color: v.color ? v.color.trim().toUpperCase() : null,
-      codigo_barras: v.codigo_barras
-        ? v.codigo_barras.trim()
-        : `CB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-  etiqueta_generada: true,
-};
+      return {
+        ...v,
+        modelo: v.modelo ? v.modelo.trim().toUpperCase() : null,
+        color: v.color ? v.color.trim().toUpperCase() : null,
+        codigo_barras: v.codigo_barras
+          ? v.codigo_barras.trim()
+          : `CB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        etiqueta_generada: true,
+      };
     });
 
     const productoNormalizado: CreateProductoCompletoInput = {
-      ...data,
-      nombre: data.nombre.trim(),
-      sku: data.sku ? data.sku.trim().toUpperCase() : undefined, // GenerarSku lo hace si es undefined
-      variantes: variantesNormalizadas,
+      ...parsedData,
+      nombre: parsedData.nombre.trim(),
+      sku: parsedData.sku ? parsedData.sku.trim().toUpperCase() : undefined, // GenerarSku lo hace si es undefined
+      variantes: variantesNormalizadas as unknown as CreateVarianteInput[],
     };
 
     // 3. Persistencia Transaccional (Lógica movida al Service anteriormente)
