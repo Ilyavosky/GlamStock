@@ -27,6 +27,7 @@ export interface ProductoFila {
   totalStock: number;
   valorOriginal: number;
   valorVenta: number;
+  cantidadVariantes: number;
 }
 
 export interface SucursalData {
