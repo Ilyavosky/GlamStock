@@ -1,5 +1,3 @@
-// src/types/ventas-view.types.ts
-
 export interface VentaDetallada {
   id_transaccion: number;
   fecha_hora: string;
@@ -46,4 +44,11 @@ export interface VentaFormErrors {
   id_variante?: string;
   cantidad?: string;
   precio_venta_final?: string;
+}
+
+export interface VentaFormProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  showToast: (msg: string, type: 'success' | 'error') => void;
 }

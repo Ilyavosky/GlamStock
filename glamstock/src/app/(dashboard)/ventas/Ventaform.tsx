@@ -3,46 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import Button from '@/components/ui/Button';
+import type { Sucursal, InventarioItem, VentaFormData, VentaFormErrors, VentaFormProps } from '@/types/ventas-view.types';
 import styles from './Ventaform.module.css';
-
-interface Sucursal {
-  id_sucursal: number;
-  nombre_lugar: string;
-  ubicacion: string;
-}
-
-interface InventarioItem {
-  id_inventario: number;
-  id_variante: number;
-  sku_producto: string;
-  nombre_producto: string;
-  stock_actual: number;
-  precio_venta: number;
-  modelo: string | null;
-  color: string | null;
-}
-
-interface FormData {
-  sucursal_id: string;
-  id_variante: string;
-  cantidad: string;
-  precio_venta_final: string;
-  id_motivo: string;
-}
-
-interface FormErrors {
-  sucursal_id?: string;
-  id_variante?: string;
-  cantidad?: string;
-  precio_venta_final?: string;
-}
-
-interface VentaFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  showToast: (msg: string, type: 'success' | 'error') => void;
-}
 
 const MOTIVOS = [
   { id: 1, label: 'Venta directa al cliente' },
@@ -51,7 +13,7 @@ const MOTIVOS = [
   { id: 4, label: 'Ajuste de inventario (Faltante)' },
 ];
 
-const FORM_INITIAL: FormData = {
+const FORM_INITIAL: VentaFormData = {
   sucursal_id: '',
   id_variante: '',
   cantidad: '',
@@ -60,8 +22,8 @@ const FORM_INITIAL: FormData = {
 };
 
 export default function VentaForm({ open, onClose, onSuccess, showToast }: VentaFormProps) {
-  const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [formData, setFormData] = useState<VentaFormData>(FORM_INITIAL);
+  const [formErrors, setFormErrors] = useState<VentaFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
@@ -143,7 +105,7 @@ export default function VentaForm({ open, onClose, onSuccess, showToast }: Venta
   };
 
   const validate = (): boolean => {
-    const errors: FormErrors = {};
+    const errors: VentaFormErrors = {};
     if (!formData.sucursal_id) errors.sucursal_id = 'Selecciona una sucursal';
     if (!formData.id_variante) errors.id_variante = 'Selecciona un producto';
     if (!formData.cantidad || Number(formData.cantidad) <= 0) errors.cantidad = 'Ingresa una cantidad válida';
