@@ -6,29 +6,8 @@ import Button from '@/components/ui/Button';
 import SucursalCard, { InventarioItem } from './SucursalCard';
 import EditProductoModal from '../inventario/Editproducto';
 import InfoProductoModal from '../inventario/Infoproducto';
+import type { Sucursal, SucursalConInventario, VarianteProducto, Producto } from '@/types/sucursales-view.types';
 import styles from './page.module.css';
-
-interface Sucursal {
-  id_sucursal: number;
-  nombre_lugar: string;
-  ubicacion: string;
-  activo: boolean;
-}
-
-interface SucursalConInventario extends Sucursal {
-  inventario: InventarioItem[];
-  loadingInventario: boolean;
-}
-
-interface VarianteProducto {
-  id_variante: number;
-  id_producto_maestro: number;
-}
-
-interface Producto {
-  id_producto_maestro: number;
-  variantes: VarianteProducto[];
-}
 
 export default function SucursalesPage() {
   const [sucursales, setSucursales] = useState<SucursalConInventario[]>([]);
