@@ -163,7 +163,7 @@ export default function EditVarianteModal({ open, varianteId, onClose, onSuccess
                 fontWeight: '500'
               }}
             />
-            <p className={formStyles.hint} style={{fontSize: '11px', color: '#9ca3af', marginTop: '4px'}}>
+            <p className={formStyles.hint}>
               El nombre completo se edita en el Producto Maestro.
             </p>
           </div>
