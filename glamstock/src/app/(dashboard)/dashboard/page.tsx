@@ -8,43 +8,7 @@ import EditProductoModal from '../inventario/Editproducto';
 import InfoProductoModal from '../inventario/Infoproducto';
 import SucursalCard, { InventarioItem } from '../sucursales/SucursalCard';
 import styles from './page.module.css';
-
-interface DashboardStats {
-  estadisticas: {
-    total_productos_unicos: number;
-    total_variantes: number;
-  };
-}
-
-interface Variante {
-  id_variante: number;
-  precio_adquisicion: number;
-  precio_venta_etiqueta: number;
-}
-
-interface Producto {
-  id_producto_maestro: number;
-  sku: string;
-  nombre: string;
-  variantes: Variante[];
-}
-
-interface ProductoFila {
-  id: number;
-  sku: string;
-  nombre: string;
-  totalStock: number;
-  valorOriginal: number;
-  valorVenta: number;
-}
-
-interface SucursalData {
-  id_sucursal: number;
-  nombre_lugar: string;
-  ubicacion: string;
-  inventario: InventarioItem[];
-  loading: boolean;
-}
+import { DashboardStats, ProductoFila, SucursalData, Variante, Producto, } from '@/types/dashboard-view.types';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
