@@ -20,8 +20,8 @@ export const crearProductoMaestroSchema = z.object({
   // SKU es opcional: si no se proporciona, el service lo genera automáticamente
   sku: z.string().min(3, 'El SKU debe tener al menos 3 caracteres').max(50).optional(),
   nombre: z.string().min(2).max(150),
-  // Un producto maestro puede crearse junto con sus variantes iniciales
-  variantes: z.array(varianteSchema).min(1, 'Debe incluir al menos una variante (ej. el modelo base)'),
+  // Un producto maestro puede crearse sin variantes iniciales
+  variantes: z.array(varianteSchema).optional().default([]),
 });
 
 // VarianteDTO re-exporta CreateVarianteInput para evitar definiciones duplicadas

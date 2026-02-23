@@ -26,7 +26,7 @@ export interface UpdateProductoInput {
 export interface CreateProductoCompletoInput {
   sku?: string;
   nombre: string;
-  variantes: CreateVarianteInput[];
+  variantes?: CreateVarianteInput[];
 }
 
 export * from './pagination.types';

@@ -8,7 +8,7 @@ import Dialog from '@/components/ui/Dialog';
 import EditProductoModal from './Editproducto';
 import InfoProductoModal from './Infoproducto';
 import NuevoProductoForm, { FormData, FormErrors, Sucursal, validateField, buildFormErrors } from './Nuevoproducto';
-import type { Variante, Producto, ProductoFila } from '@/types/inventario-view.types';
+import type { Producto, ProductoFila } from '@/types/inventario-view.types';
 import styles from './page.module.css';
 import formStyles from './form.module.css';
 
@@ -148,12 +148,12 @@ export default function InventarioPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setFormErrors((prev) => ({ ...prev, [name]: validateField(name as keyof FormData, value, formData.precio_adquisicion) }));
+    setFormErrors((prev) => ({ ...prev, [name]: validateField(name as keyof FormData, value, formData.precio_adquisicion, true) }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors = buildFormErrors(formData, true);
+    const errors = buildFormErrors(formData, true, true);
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setSubmitting(true);
@@ -161,15 +161,6 @@ export default function InventarioPage() {
       const body = {
         nombre: formData.nombre.trim(),
         sku: formData.sku.trim() || undefined,
-        variantes: [{
-          ...(formData.codigo_barras.trim() && { codigo_barras: formData.codigo_barras.trim() }),
-          ...(formData.modelo.trim() && { modelo: formData.modelo.trim() }),
-          ...(formData.color.trim() && { color: formData.color.trim() }),
-          precio_adquisicion: Number(formData.precio_adquisicion),
-          precio_venta_etiqueta: Number(formData.precio_venta_etiqueta),
-          sucursal_id: Number(formData.sucursal_id),
-          stock_inicial: Number(formData.stock_inicial) || 0,
-        }],
       };
       const res = await fetch('/api/productos', {
         method: 'POST',
@@ -281,6 +272,7 @@ export default function InventarioPage() {
           formErrors={formErrors}
           sucursales={sucursales}
           submitting={submitting}
+          isCreationMode={true}
           onChange={handleChange}
           onSubmit={handleSubmit}
           onCancel={handleCloseModal}

@@ -8,8 +8,12 @@ export function validateField(
   name: keyof FormData,
   value: string,
   precioAdquisicion?: string,
+  isCreationMode?: boolean
 ): string | undefined {
   if (name === 'nombre' && !value.trim()) return 'El nombre es obligatorio';
+  
+  if (isCreationMode) return undefined;
+
   if (name === 'precio_adquisicion') {
     if (!value) return 'El precio de adquisición es obligatorio';
     if (isNaN(Number(value)) || Number(value) < 0) return 'Debe ser un número positivo';
@@ -24,17 +28,21 @@ export function validateField(
   return undefined;
 }
 
-export function buildFormErrors(formData: FormData, includeSucursal = false): FormErrors {
+export function buildFormErrors(formData: FormData, includeSucursal = false, isCreationMode = false): FormErrors {
   const errors: FormErrors = {};
-  const e1 = validateField('nombre', formData.nombre);
-  const e2 = validateField('precio_adquisicion', formData.precio_adquisicion);
-  const e3 = validateField('precio_venta_etiqueta', formData.precio_venta_etiqueta, formData.precio_adquisicion);
+  const e1 = validateField('nombre', formData.nombre, undefined, isCreationMode);
   if (e1) errors.nombre = e1;
-  if (e2) errors.precio_adquisicion = e2;
-  if (e3) errors.precio_venta_etiqueta = e3;
-  if (includeSucursal) {
-    const e4 = validateField('sucursal_id', formData.sucursal_id);
-    if (e4) errors.sucursal_id = e4;
+  
+  if (!isCreationMode) {
+    const e2 = validateField('precio_adquisicion', formData.precio_adquisicion, undefined, isCreationMode);
+    const e3 = validateField('precio_venta_etiqueta', formData.precio_venta_etiqueta, formData.precio_adquisicion, isCreationMode);
+    
+    if (e2) errors.precio_adquisicion = e2;
+    if (e3) errors.precio_venta_etiqueta = e3;
+    if (includeSucursal) {
+      const e4 = validateField('sucursal_id', formData.sucursal_id, undefined, isCreationMode);
+      if (e4) errors.sucursal_id = e4;
+    }
   }
   return errors;
 }
@@ -49,6 +57,7 @@ interface NuevoProductoFormProps {
   submitting: boolean;
   submitLabel?: string;
   showSucursal?: boolean;
+  isCreationMode?: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
@@ -62,6 +71,7 @@ export default function NuevoProductoForm({
   submitting,
   submitLabel = 'Agregar producto',
   showSucursal = true,
+  isCreationMode = false,
   onChange,
   onSubmit,
   onCancel,
@@ -92,7 +102,9 @@ export default function NuevoProductoForm({
         />
       </div>
 
-      <div className={styles.row}>
+      {!isCreationMode && (
+        <>
+          <div className={styles.row}>
         <div className={styles.field}>
           <input
             className={styles.input}
@@ -198,6 +210,8 @@ export default function NuevoProductoForm({
             onChange={onChange}
           />
         </div>
+      )}
+        </>
       )}
 
       <div className={styles.actions}>
