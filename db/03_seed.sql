@@ -13,7 +13,8 @@ INSERT INTO motivos_transaccion (descripcion) VALUES
 ('Venta directa al cliente'),
 ('Baja por merma / daño'),
 ('Ajuste de inventario (Sobrante)'),
-('Ajuste de inventario (Faltante)')
+('Ajuste de inventario (Faltante)'),
+('Ingreso por adquisición / compra')
 ON CONFLICT (descripcion) DO NOTHING;
 
 -- Usuario administrador
