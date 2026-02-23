@@ -7,6 +7,7 @@ import {
   ProductosPorSucursal,
   UtilidadesNetas,
 } from '../types/dashboard.types';
+export { refreshRankingViews } from '@/lib/db/refresh-views';
 
 export class DashboardRepository {
 
@@ -92,8 +93,6 @@ export class DashboardRepository {
     };
   }
 
-  // ===== Métodos de Ranking (usan vistas materializadas) =====
-
   /**
    * Obtiene los N productos MÁS vendidos en TODAS las sucursales.
    * Fuente: vista_ranking_productos_global (materializada).
@@ -168,16 +167,6 @@ export class DashboardRepository {
       costo_total: Number(r.costo_total),
       utilidad_neta: Number(r.utilidad_neta),
     }));
-  }
-
-  /**
-   * Refresca las dos vistas materializadas de ranking.
-   * Llamar después de registrar una venta para mantener los datos actualizados.
-   * Usa CONCURRENTLY para no bloquear lecturas simultáneas.
-   */
-  static async refreshRankingViews(): Promise<void> {
-    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY vista_ranking_productos_global;`);
-    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY vista_ranking_productos_por_sucursal;`);
   }
 }
 

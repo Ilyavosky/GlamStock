@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
-import { Venta, VentaDetallada, CreateVentaInput, PaginationOptions, TotalVentas } from '../types/ventas.types';
-import { DashboardRepository } from '@/modules/dashboard/repositories/dashboard.repository';
+import { VentaDetallada, CreateVentaInput, PaginationOptions, TotalVentas } from '../types/ventas.types';
+import { refreshRankingViews } from '@/lib/db/refresh-views';
 
 
 export class VentasRepository {
@@ -21,7 +21,7 @@ export class VentasRepository {
     ]);
 
     // Refrescar vistas materializadas de ranking después de cada venta
-    await DashboardRepository.refreshRankingViews();
+    await refreshRankingViews();
 
     return rows[0];
   }
