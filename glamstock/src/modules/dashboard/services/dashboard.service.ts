@@ -4,7 +4,9 @@ import {
   EstadisticasGenerales,
   ProductosPorSucursal,
   UtilidadesNetas,
-  TopProducto,
+  RankingProducto,
+  RankingProductoSucursal,
+  ResumenVentasSucursal,
   FiltrosDashboard,
 } from '../types/dashboard.types';
 
@@ -33,12 +35,43 @@ export class DashboardService {
     return DashboardRepository.getUtilidadesNetas(fechaInicio, fechaFin);
   }
 
+  // ===== Ranking de productos (via vistas materializadas) =====
+
   /**
-   * Obtiene los productos más vendidos ordenados por cantidad total vendida.
-   * @param limit Cantidad máxima de productos a retornar (default: 10)
+   * Productos más vendidos en TODAS las sucursales.
    */
-  static async getTopProductos(limit: number = 10): Promise<TopProducto[]> {
-    return DashboardRepository.getTopProductos(limit);
+  static async getMasVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
+    return DashboardRepository.getMasVendidosGlobal(limit);
+  }
+
+  /**
+   * Productos menos vendidos en TODAS las sucursales.
+   * Incluye variantes con 0 ventas para detectar producto sin rotación.
+   */
+  static async getMenosVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
+    return DashboardRepository.getMenosVendidosGlobal(limit);
+  }
+
+  /**
+   * Productos más vendidos en una sucursal específica.
+   */
+  static async getMasVendidosPorSucursal(id_sucursal: number, limit: number = 10): Promise<RankingProductoSucursal[]> {
+    return DashboardRepository.getMasVendidosPorSucursal(id_sucursal, limit);
+  }
+
+  /**
+   * Productos menos vendidos en una sucursal específica.
+   */
+  static async getMenosVendidosPorSucursal(id_sucursal: number, limit: number = 10): Promise<RankingProductoSucursal[]> {
+    return DashboardRepository.getMenosVendidosPorSucursal(id_sucursal, limit);
+  }
+
+  /**
+   * KPIs de ventas (transacciones, ingresos, utilidad) por sucursal.
+   * Fuente: vista_resumen_ventas_por_sucursal.
+   */
+  static async getResumenVentasPorSucursal(): Promise<ResumenVentasSucursal[]> {
+    return DashboardRepository.getResumenVentasPorSucursal();
   }
 
   /**
@@ -52,7 +85,7 @@ export class DashboardService {
       this.getEstadisticasGenerales(),
       this.getProductosPorSucursal(),
       this.getUtilidadesNetas(fecha_inicio, fecha_fin),
-      this.getTopProductos(top_limit),
+      this.getMasVendidosGlobal(top_limit),
     ]);
 
     return {
