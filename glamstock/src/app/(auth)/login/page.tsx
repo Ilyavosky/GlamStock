@@ -6,23 +6,23 @@ import FormField from '@/components/forms/FormField';
 import ErrorMessage from '@/components/forms/ErrorMessage';
 import styles from './page.module.css';
 
-interface FormData {
+interface LoginFormData {
   email: string;
   password: string;
 }
 
-interface FormErrors {
+interface LoginFormErrors {
   email?: string;
   password?: string;
 }
 
 export default function LoginPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
   });
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [errors, setErrors] = useState<LoginFormErrors>({});
   const [generalError, setGeneralError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
   };
 
   const validate = (): boolean => {
-    const newErrors: FormErrors = {};
+    const newErrors: LoginFormErrors = {};
     if (!formData.email) newErrors.email = 'El correo es obligatorio';
     if (!formData.password) {
       newErrors.password = 'La contraseña es obligatoria';
@@ -56,6 +56,7 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
 
@@ -64,9 +65,6 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(data.error || 'Error al iniciar sesión');
       }
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.usuario));
 
       router.push('/dashboard');
     } catch (error) {
