@@ -1,0 +1,121 @@
+import Dialog from '@/components/ui/Dialog';
+import styles from './Infoproducto.module.css';
+import formStyles from './form.module.css';
+import { useState, useEffect } from 'react';
+
+interface InfoVarianteModalProps {
+  open: boolean;
+  varianteId: number | null;
+  inventarioId: number | null;
+  onClose: () => void;
+}
+
+export default function InfoVarianteModal({ open, varianteId, inventarioId, onClose }: InfoVarianteModalProps) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      if (!open || !varianteId) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/variantes/${varianteId}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Error al cargar variante');
+        const v = (await res.json()).data || await res.json();
+        
+        let pName = 'Producto Maestro';
+        if (v.id_producto_maestro) {
+           const pRes = await fetch(`/api/productos/${v.id_producto_maestro}`, { credentials: 'include' });
+           if (pRes.ok) pName = (await pRes.json()).nombre || pName;
+        }
+
+        let invStock = 0;
+        if (inventarioId) {
+           const resInv = await fetch(`/api/inventario/${inventarioId}`, { credentials: 'include' });
+           if (resInv.ok) invStock = (await resInv.json()).stock_actual || 0;
+        }
+
+        if (active) {
+            setData({
+                nombre: pName,
+                sku: v.sku_variante,
+                codigo_barras: v.codigo_barras,
+                modelo: v.modelo,
+                color: v.color,
+                precio_adquisicion: v.precio_adquisicion,
+                precio_venta_etiqueta: v.precio_venta_etiqueta,
+                stock: invStock
+            });
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, [open, varianteId, inventarioId]);
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Información de la Variante">
+      {loading ? (
+        <p className={formStyles.loadingText}>Cargando...</p>
+      ) : !data ? (
+        <p className={formStyles.error}>No se pudo cargar la información.</p>
+      ) : (
+        <div className={styles.section}>
+          
+          <div className={styles.field}>
+            <p className={styles.label}>Producto Maestro (Vinculado)</p>
+            <p className={styles.value}>{data.nombre}</p>
+          </div>
+
+          <hr className={styles.divider} />
+
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <p className={styles.label}>SKU Variante</p>
+              <p className={styles.value}>{data.sku}</p>
+            </div>
+            <div className={styles.field}>
+              <p className={styles.label}>Código de barras</p>
+              <p className={styles.value}>{data.codigo_barras || '—'}</p>
+            </div>
+          </div>
+
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <p className={styles.label}>Modelo</p>
+              <p className={styles.value}>{data.modelo || '—'}</p>
+            </div>
+            <div className={styles.field}>
+              <p className={styles.label}>Color</p>
+              <p className={styles.value}>{data.color || '—'}</p>
+            </div>
+          </div>
+
+          <hr className={styles.divider} />
+
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <p className={styles.label}>Valor original</p>
+              <p className={styles.value}>${Number(data.precio_adquisicion).toLocaleString()}</p>
+            </div>
+            <div className={styles.field}>
+              <p className={styles.label}>Valor venta</p>
+              <p className={styles.value}>${Number(data.precio_venta_etiqueta).toLocaleString()}</p>
+            </div>
+          </div>
+          
+          <div className={styles.field}>
+            <p className={styles.label}>Stock Actual (Ubicación)</p>
+            <p className={styles.value}>{data.stock}</p>
+          </div>
+          
+        </div>
+      )}
+    </Dialog>
+  );
+}
