@@ -11,6 +11,7 @@ interface UseDashboardDataResult {
   varianteSucursalMap: Map<number, string>;
   varianteToProductoMap: Map<number, number>;
   fetchTodo: () => Promise<void>;
+  fetchStats: (periodo?: string) => Promise<void>;
 }
 
 export function useDashboardData(): UseDashboardDataResult {
@@ -22,9 +23,25 @@ export function useDashboardData(): UseDashboardDataResult {
   const [varianteSucursalMap, setVarianteSucursalMap] = useState<Map<number, string>>(new Map());
   const [varianteToProductoMap, setVarianteToProductoMap] = useState<Map<number, number>>(new Map());
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (periodo: string = '30dias') => {
+    setStatsLoading(true);
     try {
-      const res = await fetch('/api/dashboard/stats', { credentials: 'include' });
+      let url = '/api/dashboard/stats';
+      if (periodo !== 'historico') {
+        const hoy = new Date();
+        const inicio = new Date();
+        
+        if (periodo === 'hoy') inicio.setHours(0, 0, 0, 0);
+        else if (periodo === '7dias') inicio.setDate(hoy.getDate() - 7);
+        else if (periodo === '30dias') inicio.setDate(hoy.getDate() - 30);
+        else if (periodo === 'este_mes') {
+          inicio.setDate(1);
+          inicio.setHours(0, 0, 0, 0);
+        }
+        
+        url += `?fecha_inicio=${inicio.toISOString()}&fecha_fin=${hoy.toISOString()}`;
+      }
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) return;
       const json = await res.json();
       setStats(json.data);
@@ -116,5 +133,6 @@ export function useDashboardData(): UseDashboardDataResult {
     varianteSucursalMap,
     varianteToProductoMap,
     fetchTodo,
+    fetchStats,
   };
 }
