@@ -1,297 +1,218 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import Table, { Column } from '@/components/ui/Table';
-import SearchInput from '@/components/ui/SearchInput';
-import Button from '@/components/ui/Button';
-import Dialog from '@/components/ui/Dialog';
-import StatsCard from './Statscard';
-import NuevoProductoForm, { FormData, FormErrors, validateField, buildFormErrors } from '../inventario/Nuevoproducto';
-import EditProductoModal from '../inventario/Editproducto';
-import InfoProductoModal from '../inventario/Infoproducto';
-import AddVarianteModal from '../inventario/AddVarianteModal';
-import EditVarianteModal from '../inventario/EditVarianteModal';
-import InfoVarianteModal from '../inventario/InfoVarianteModal';
-import AjusteStockModal from '../inventario/AjusteStockModal';
-import SucursalCard from '../sucursales/SucursalCard';
-import { useDashboardData } from '@/hooks/useDashboardData';
-import type { ProductoFila } from '@/types/dashboard-view.types';
-import styles from './page.module.css';
-
-const FORM_INITIAL: FormData = {
-  nombre: '', sku: '', modelo: '', color: '', codigo_barras: '',
-  precio_adquisicion: '', precio_venta_etiqueta: '', sucursal_id: '', stock_inicial: '',
-};
+import { useState, useCallback } from "react";
+import Table, { Column } from "@/components/ui/Table";
+import SearchInput from "@/components/ui/SearchInput";
+import Button from "@/components/ui/Button";
+import StatsCard from "./Statscard";
+import BestSellersCard from './BestSellersCard';
+import SlowMoversCard from './SlowMoversCard';
+import SucursalesPerformance from './SucursalesPerformance';
+import SalesTrendChart from './SalesTrendChart';
+import { useDashboardData } from "@/hooks/useDashboardData";
+import type { ProductoFila } from "@/types/dashboard-view.types";
+import styles from "./page.module.css";
+import kpiStyles from './kpiCards.module.css';
 
 export default function DashboardPage() {
   const {
-    stats, statsLoading,
-    productos, tableLoading,
-    sucursales, varianteSucursalMap, varianteToProductoMap,
+    stats,
+    statsLoading,
+    productos,
+    tableLoading,
+    sucursales,
+    varianteSucursalMap,
+    varianteToProductoMap,
     fetchTodo,
+    fetchStats,
   } = useDashboardData();
 
   const [filtered, setFiltered] = useState<ProductoFila[]>([]);
   const [filteredInit, setFilteredInit] = useState(false);
+  const [periodo, setPeriodo] = useState('30dias');
+  const [stockFilter, setStockFilter] = useState('todos');
+  const [variantFilter, setVariantFilter] = useState('todos');
 
-  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [infoId, setInfoId] = useState<number | null>(null);
-  const [showInfoModal, setShowInfoModal] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const displayProductos = (filteredInit ? filtered : productos).filter((p) => {
+    if (stockFilter === 'agotados' && p.totalStock > 0) return false;
+    if (stockFilter === 'con_stock' && p.totalStock === 0) return false;
+    if (variantFilter === 'sin_variantes' && p.cantidadVariantes > 0) return false;
+    if (variantFilter === 'con_variantes' && p.cantidadVariantes === 0) return false;
+    return true;
+  });
 
-  // Crear producto maestro
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [submitting, setSubmitting] = useState(false);
-
-  // Modal para agregar variante
-  const [showAddVarianteModal, setShowAddVarianteModal] = useState(false);
-  const [addVarianteProductId, setAddVarianteProductId] = useState<number | null>(null);
-  const [addVarianteProductoNombre, setAddVarianteProductoNombre] = useState('');
-
-  // Modales variante específicos (Sucursal Cards)
-  const [showEditVarianteModal, setShowEditVarianteModal] = useState(false);
-  const [editVarianteId, setEditVarianteId] = useState<number | null>(null);
-  const [editInventarioId, setEditInventarioId] = useState<number | null>(null);
-
-  const [showInfoVarianteModal, setShowInfoVarianteModal] = useState(false);
-  const [infoVarianteId, setInfoVarianteId] = useState<number | null>(null);
-  const [infoInventarioId, setInfoInventarioId] = useState<number | null>(null);
-
-  const [showAjusteStockModal, setShowAjusteStockModal] = useState(false);
-  const [ajusteVarianteId, setAjusteVarianteId] = useState<number | null>(null);
-  const [ajusteSucursalId, setAjusteSucursalId] = useState<number | null>(null);
-
-  const displayProductos = filteredInit ? filtered : productos;
-
-  const showToast = (msg: string, type: 'success' | 'error') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, key: string) => {
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropdownHeight = 108;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow >= dropdownHeight ? rect.bottom + 4 : rect.top - dropdownHeight - 4;
-    setMenuPos({ top, left: rect.right - 120 });
-    setOpenMenuKey(prev => (prev === key ? null : key));
-  };
-
-  const closeMenu = () => setOpenMenuKey(null);
-
-  const handleOpenEdit = (id: number) => { setEditId(id); setShowEditModal(true); closeMenu(); };
-  const handleOpenInfo = (id: number) => { setInfoId(id); setShowInfoModal(true); closeMenu(); };
-
-  const handleOpenEditVariante = (idV: number, idI: number) => { setEditVarianteId(idV); setEditInventarioId(idI); setShowEditVarianteModal(true); closeMenu(); };
-  const handleOpenInfoVariante = (idV: number, idI: number) => { setInfoVarianteId(idV); setInfoInventarioId(idI); setShowInfoVarianteModal(true); closeMenu(); };
-  const handleOpenAjusteStock = (idV: number, idS: number) => { setAjusteVarianteId(idV); setAjusteSucursalId(idS); setShowAjusteStockModal(true); closeMenu(); };
-
-  const handleOpenModal = () => {
-    setFormData(FORM_INITIAL);
-    setFormErrors({});
-    setShowModal(true);
-  };
-  const handleCloseModal = () => {
-    if (!submitting) { setShowModal(false); setFormErrors({}); }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setFormErrors(prev => ({ ...prev, [name]: validateField(name as keyof FormData, value, formData.precio_adquisicion, true) }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors = buildFormErrors(formData, true, true);
-    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
-
-    setSubmitting(true);
-    try {
-      const body = {
-        nombre: formData.nombre.trim(),
-        sku: formData.sku.trim() || undefined,
-      };
-      const res = await fetch('/api/productos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al crear el producto');
-      showToast('Producto agregado correctamente', 'success');
-      handleCloseModal();
-      fetchTodo();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error al crear el producto', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSearch = useCallback((term: string) => {
-    setFilteredInit(true);
-    if (!term.trim()) { setFiltered(productos); return; }
-    const lower = term.toLowerCase();
-    setFiltered(productos.filter(p =>
-      p.nombre.toLowerCase().includes(lower) || p.sku.toLowerCase().includes(lower)
-    ));
-  }, [productos]);
+  const handleSearch = useCallback(
+    (term: string) => {
+      setFilteredInit(true);
+      if (!term.trim()) {
+        setFiltered(productos);
+        return;
+      }
+      const lower = term.toLowerCase();
+      setFiltered(
+        productos.filter(
+          (p) =>
+            p.nombre.toLowerCase().includes(lower) ||
+            p.sku.toLowerCase().includes(lower),
+        ),
+      );
+    },
+    [productos],
+  );
 
   const valorInventario = productos.reduce((acc, p) => acc + p.valorVenta, 0);
 
   const columnas: Column<ProductoFila>[] = [
-    { header: 'SKU', key: 'sku' },
-    { header: 'Productos', key: 'nombre' },
-    { header: 'Total Stock', key: 'totalStock' },
-    { header: 'Valor original', key: 'valorOriginal', render: (r) => `$${r.valorOriginal.toLocaleString()}` },
-    { header: 'Valor venta', key: 'valorVenta', render: (r) => `$${r.valorVenta.toLocaleString()}` },
-    { header: 'Cant. variantes', key: 'cantidadVariantes' },
+    { header: "SKU", key: "sku" },
+    { header: "Productos", key: "nombre" },
+    { header: "Total Stock", key: "totalStock" },
     {
-      header: 'Acciones',
-      key: 'acciones',
-      render: (row) => {
-        const key = `g-${row.id}`;
-        return (
-          <div className={styles.menuWrapper}>
-            <button className={styles.menuTrigger} onClick={(e) => openMenu(e, key)}>•••</button>
-            {openMenuKey === key && menuPos && (
-              <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
-                <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={closeMenu}>Eliminar</button>
-                <button className={styles.dropdownItem} onClick={() => { 
-                  setAddVarianteProductId(row.id);
-                  setAddVarianteProductoNombre(row.nombre);
-                  setShowAddVarianteModal(true);
-                  closeMenu();
-                }}>Agregar variante</button>
-                <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar</button>
-                <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info</button>
-              </div>
-            )}
-          </div>
-        );
-      },
+      header: "Valor original",
+      key: "valorOriginal",
+      render: (r) => `$${r.valorOriginal.toLocaleString()}`,
     },
+    {
+      header: "Valor venta",
+      key: "valorVenta",
+      render: (r) => `$${r.valorVenta.toLocaleString()}`,
+    },
+    { header: "Cant. variantes", key: "cantidadVariantes" },
   ];
 
   return (
-    <div onClick={closeMenu}>
-      {toast && (
-        <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-          {toast.msg}
+    <div>
+      <div 
+        className={styles.statsRow}
+        style={{ 
+          opacity: (tableLoading && productos.length > 0) ? 0.5 : 1, 
+          transition: 'opacity 0.2s ease', 
+          pointerEvents: tableLoading ? 'none' : 'auto' 
+        }}
+      >
+        <StatsCard
+          label="Productos únicos"
+          value={(
+            stats?.estadisticas.total_productos_unicos ?? 0
+          ).toLocaleString()}
+          sub="en el sistema"
+          loading={statsLoading && !stats}
+        />
+        <StatsCard
+          label="Total variantes"
+          value={(stats?.estadisticas.total_variantes ?? 0).toLocaleString()}
+          sub="SKUs registrados"
+          loading={statsLoading && !stats}
+        />
+        <StatsCard
+          label="Valor del inventario"
+          value={`$${valorInventario.toLocaleString("es-MX", { minimumFractionDigits: 0 })}`}
+          sub="precio venta etiqueta"
+          loading={tableLoading && productos.length === 0}
+        />
+      </div>
+
+      {stats && (
+        <div style={{ opacity: statsLoading ? 0.5 : 1, transition: 'opacity 0.2s ease', pointerEvents: statsLoading ? 'none' : 'auto' }}>
+          <div className={styles.filterBar} style={{ marginTop: '2rem' }}>
+            <h2 className={styles.sectionTitle} style={{ margin: 0, marginRight: '1rem', fontSize: '1.2rem' }}>Rendimiento</h2>
+            <select
+              className={styles.filterSelect}
+              value={periodo}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPeriodo(val);
+                fetchStats(val);
+              }}
+            >
+              <option value="hoy">Hoy</option>
+              <option value="7dias">Últimos 7 días</option>
+              <option value="30dias">Últimos 30 días</option>
+              <option value="este_mes">Este mes</option>
+              <option value="historico">Histórico completo</option>
+            </select>
+            <div className={styles.filterActions}>
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setPeriodo('30dias');
+                  fetchStats('30dias');
+                }}
+              >
+                Limpiar
+              </Button>
+            </div>
+          </div>
+          <div className={kpiStyles.kpiGrid}>
+            <BestSellersCard productos={stats.top_productos || []} />
+            <SlowMoversCard productos={stats.slow_movers || []} />
+            <SucursalesPerformance sucursales={stats.rendimiento_sucursales || []} />
+          </div>
+          
+          <SalesTrendChart data={stats.ventas_por_dia || []} />
+
+          <hr className={styles.divider} />
         </div>
       )}
 
-      <div className={styles.statsRow}>
-        <StatsCard label="Productos únicos" value={(stats?.estadisticas.total_productos_unicos ?? 0).toLocaleString()} sub="en el sistema" loading={statsLoading} />
-        <StatsCard label="Total variantes" value={(stats?.estadisticas.total_variantes ?? 0).toLocaleString()} sub="SKUs registrados" loading={statsLoading} />
-        <StatsCard label="Valor del inventario" value={tableLoading ? '——' : `$${valorInventario.toLocaleString('es-MX', { minimumFractionDigits: 0 })}`} sub="precio venta etiqueta" loading={tableLoading} />
+      <div className={styles.filterBar}>
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <SearchInput placeholder="Buscar productos..." onSearch={handleSearch} />
+        </div>
+        <select
+          className={styles.filterSelect}
+          value={stockFilter}
+          onChange={(e) => setStockFilter(e.target.value)}
+        >
+          <option value="todos">Estado de Stock (Todos)</option>
+          <option value="con_stock">Con Stock Global</option>
+          <option value="agotados">Agotados Globalmente</option>
+        </select>
+        <select
+          className={styles.filterSelect}
+          value={variantFilter}
+          onChange={(e) => setVariantFilter(e.target.value)}
+        >
+          <option value="todos">Variantes (Todas)</option>
+          <option value="con_variantes">Con Variantes</option>
+          <option value="sin_variantes">Sin Variantes</option>
+        </select>
+        <div className={styles.filterActions}>
+          <Button 
+            variant="secondary" 
+            onClick={() => {
+              setStockFilter('todos');
+              setVariantFilter('todos');
+              // Notice: We don't need to clear the search input here directly since it's controlled internally by `SearchInput`,
+              // unless we refactor `SearchInput`, but we clear the select filters as requested.
+            }}
+          >
+            Limpiar
+          </Button>
+        </div>
       </div>
-
-      <SearchInput placeholder="Buscar productos..." onSearch={handleSearch} />
 
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>General</h1>
-          <p className={styles.subtitle}>Total productos: <strong>{displayProductos.length}</strong></p>
+          <p className={styles.subtitle}>
+            Total productos: <strong>{displayProductos.length}</strong>
+          </p>
         </div>
-        <Button onClick={handleOpenModal}>+ Agregar producto</Button>
       </div>
 
-      {tableLoading ? (
-        <div className={styles.loading}><div className={styles.spinner} /></div>
+      {tableLoading && productos.length === 0 ? (
+        <div className={styles.loading}>
+          <div className={styles.spinner} />
+        </div>
       ) : (
-        <Table headers={columnas} data={displayProductos} emptyMessage="Sin productos registrados" />
+        <div style={{ opacity: tableLoading ? 0.5 : 1, transition: 'opacity 0.2s ease', pointerEvents: tableLoading ? 'none' : 'auto' }}>
+          <Table
+            headers={columnas}
+            data={displayProductos}
+            emptyMessage="Sin productos registrados"
+          />
+        </div>
       )}
-
-      {sucursales.length > 0 && (
-        <>
-          <h2 className={styles.sectionTitle}>Por sucursal</h2>
-          <div className={styles.grid}>
-            {sucursales.map(s => (
-              <SucursalCard
-                key={s.id_sucursal}
-                nombre={s.nombre_lugar}
-                ubicacion={s.ubicacion}
-                inventario={s.inventario}
-                loading={s.loading}
-                onDelete={() => closeMenu()}
-                onEdit={(idVariante, idInventario) => handleOpenEditVariante(idVariante, idInventario)}
-                onInfo={(idVariante, idInventario) => handleOpenInfoVariante(idVariante, idInventario)}
-                onAjustar={(idVariante, idSucursal) => handleOpenAjusteStock(idVariante, idSucursal)}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      <Dialog open={showModal} onClose={handleCloseModal} title="Nuevo producto">
-        <NuevoProductoForm
-          formData={formData}
-          formErrors={formErrors}
-          sucursales={sucursales.map(s => ({ id_sucursal: s.id_sucursal, nombre_lugar: s.nombre_lugar, ubicacion: s.ubicacion }))}
-          submitting={submitting}
-          isCreationMode={true}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          onCancel={handleCloseModal}
-        />
-      </Dialog>
-
-      <EditProductoModal
-        open={showEditModal}
-        productoId={editId}
-        onClose={() => { setShowEditModal(false); setEditId(null); }}
-        onSuccess={fetchTodo}
-        showToast={showToast}
-      />
-
-      <InfoProductoModal
-        open={showInfoModal}
-        productoId={infoId}
-        onClose={() => { setShowInfoModal(false); setInfoId(null); }}
-      />
-
-      <AddVarianteModal
-        open={showAddVarianteModal}
-        productoId={addVarianteProductId}
-        productoNombre={addVarianteProductoNombre}
-        sucursales={sucursales}
-        onClose={() => setShowAddVarianteModal(false)}
-        onSuccess={fetchTodo}
-        showToast={showToast}
-      />
-
-      <EditVarianteModal
-        open={showEditVarianteModal}
-        varianteId={editVarianteId}
-        onClose={() => setShowEditVarianteModal(false)}
-        onSuccess={fetchTodo}
-        showToast={showToast}
-      />
-
-      <InfoVarianteModal
-        open={showInfoVarianteModal}
-        varianteId={infoVarianteId}
-        inventarioId={infoInventarioId}
-        onClose={() => setShowInfoVarianteModal(false)}
-      />
-
-      <AjusteStockModal
-        open={showAjusteStockModal}
-        varianteId={ajusteVarianteId}
-        sucursalId={ajusteSucursalId}
-        onClose={() => setShowAjusteStockModal(false)}
-        onSuccess={fetchTodo}
-        showToast={showToast}
-      />
     </div>
   );
 }
