@@ -5,6 +5,12 @@ import Table, { Column } from '@/components/ui/Table';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
+import NuevoProductoForm, {
+  FormData,
+  FormErrors,
+  validateField,
+  buildFormErrors,
+} from './Nuevoproducto';
 import EditProductoModal from './Editproducto';
 import InfoProductoModal from './Infoproducto';
 import AddVarianteModal from './AddVarianteModal';
@@ -15,6 +21,18 @@ import styles from './page.module.css';
 import formStyles from './form.module.css';
 
 export interface Sucursal { id_sucursal: number; nombre_lugar: string; ubicacion: string; }
+
+const FORM_INITIAL: FormData = {
+  nombre: "",
+  sku: "",
+  modelo: "",
+  color: "",
+  codigo_barras: "",
+  precio_adquisicion: "",
+  precio_venta_etiqueta: "",
+  sucursal_id: "",
+  stock_inicial: "",
+};
 
 const ITEMS_PER_PAGE = 20;
 
@@ -45,6 +63,12 @@ export default function InventarioPage() {
   const [selectVarianteProductId, setSelectVarianteProductId] = useState<number | null>(null);
   const [showEditVarianteModal, setShowEditVarianteModal] = useState(false);
   const [editVarianteId, setEditVarianteId] = useState<number | null>(null);
+
+  // Crear producto maestro
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState<FormData>(FORM_INITIAL);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -143,6 +167,70 @@ export default function InventarioPage() {
     }
   };
 
+  const handleOpenModal = () => {
+    setFormData(FORM_INITIAL);
+    setFormErrors({});
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    if (!submitting) {
+      setShowModal(false);
+      setFormErrors({});
+    }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: validateField(
+        name as keyof FormData,
+        value,
+        formData.precio_adquisicion,
+        true,
+      ),
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors = buildFormErrors(formData, true, true);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const body = {
+        nombre: formData.nombre.trim(),
+        sku: formData.sku.trim() || undefined,
+      };
+      const res = await fetch("/api/productos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al crear el producto");
+      showToast("Producto agregado correctamente", "success");
+      handleCloseModal();
+      fetchProductos();
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Error al crear el producto",
+        "error",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -210,6 +298,7 @@ export default function InventarioPage() {
           <h1 className={styles.title}>General</h1>
           <p className={styles.subtitle}>Total productos: {filtered.length}</p>
         </div>
+        <Button onClick={handleOpenModal}>+ Agregar producto</Button>
       </div>
 
       {loading ? (
@@ -282,6 +371,27 @@ export default function InventarioPage() {
         onSuccess={fetchProductos}
         showToast={showToast}
       />
+      
+      <Dialog
+        open={showModal}
+        onClose={handleCloseModal}
+        title="Nuevo producto"
+      >
+        <NuevoProductoForm
+          formData={formData}
+          formErrors={formErrors}
+          sucursales={sucursales.map((s) => ({
+            id_sucursal: s.id_sucursal,
+            nombre_lugar: s.nombre_lugar,
+            ubicacion: s.ubicacion,
+          }))}
+          submitting={submitting}
+          isCreationMode={true}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseModal}
+        />
+      </Dialog>
     </div>
   );
 }
