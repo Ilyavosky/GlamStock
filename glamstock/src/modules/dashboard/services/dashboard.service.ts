@@ -8,6 +8,7 @@ import {
   RankingProductoSucursal,
   ResumenVentasSucursal,
   FiltrosDashboard,
+  VentasPorDia,
 } from '../types/dashboard.types';
 
 export class DashboardService {
@@ -40,16 +41,16 @@ export class DashboardService {
   /**
    * Productos más vendidos en TODAS las sucursales.
    */
-  static async getMasVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
-    return DashboardRepository.getMasVendidosGlobal(limit);
+  static async getMasVendidosGlobal(limit: number = 10, fechaInicio?: Date, fechaFin?: Date): Promise<RankingProducto[]> {
+    return DashboardRepository.getMasVendidosGlobal(limit, fechaInicio, fechaFin);
   }
 
   /**
    * Productos menos vendidos en TODAS las sucursales.
    * Incluye variantes con 0 ventas para detectar producto sin rotación.
    */
-  static async getMenosVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
-    return DashboardRepository.getMenosVendidosGlobal(limit);
+  static async getMenosVendidosGlobal(limit: number = 10, fechaInicio?: Date, fechaFin?: Date): Promise<RankingProducto[]> {
+    return DashboardRepository.getMenosVendidosGlobal(limit, fechaInicio, fechaFin);
   }
 
   /**
@@ -70,8 +71,15 @@ export class DashboardService {
    * KPIs de ventas (transacciones, ingresos, utilidad) por sucursal.
    * Fuente: vista_resumen_ventas_por_sucursal.
    */
-  static async getResumenVentasPorSucursal(): Promise<ResumenVentasSucursal[]> {
-    return DashboardRepository.getResumenVentasPorSucursal();
+  static async getResumenVentasPorSucursal(fechaInicio?: Date, fechaFin?: Date): Promise<ResumenVentasSucursal[]> {
+    return DashboardRepository.getResumenVentasPorSucursal(fechaInicio, fechaFin);
+  }
+
+  /**
+   * Obtiene la tendencia de ventas agrupada por día.
+   */
+  static async getVentasPorDia(fechaInicio?: Date, fechaFin?: Date): Promise<VentasPorDia[]> {
+    return DashboardRepository.getVentasPorDia(fechaInicio, fechaFin);
   }
 
   /**
@@ -81,11 +89,14 @@ export class DashboardService {
   static async getDashboardCompleto(filtros: FiltrosDashboard = {}): Promise<DashboardCompleto> {
     const { fecha_inicio, fecha_fin, top_limit = 10 } = filtros;
 
-    const [estadisticas, productos_por_sucursal, utilidades, top_productos] = await Promise.all([
+    const [estadisticas, productos_por_sucursal, utilidades, top_productos, slow_movers, rendimiento_sucursales, ventas_por_dia] = await Promise.all([
       this.getEstadisticasGenerales(),
       this.getProductosPorSucursal(),
       this.getUtilidadesNetas(fecha_inicio, fecha_fin),
-      this.getMasVendidosGlobal(top_limit),
+      this.getMasVendidosGlobal(top_limit, fecha_inicio, fecha_fin),
+      this.getMenosVendidosGlobal(top_limit, fecha_inicio, fecha_fin),
+      this.getResumenVentasPorSucursal(fecha_inicio, fecha_fin),
+      this.getVentasPorDia(fecha_inicio, fecha_fin),
     ]);
 
     return {
@@ -93,6 +104,9 @@ export class DashboardService {
       productos_por_sucursal,
       utilidades,
       top_productos,
+      slow_movers,
+      rendimiento_sucursales,
+      ventas_por_dia,
     };
   }
 }

@@ -71,9 +71,19 @@ export interface FiltrosDashboard {
   top_limit?: number;
 }
 
+export interface VentasPorDia {
+  fecha: string;
+  total_ventas: number;
+  ingresos_brutos: number;
+  utilidad_neta: number;
+}
+
 export interface DashboardCompleto {
   estadisticas: EstadisticasGenerales;
   productos_por_sucursal: ProductosPorSucursal[];
   utilidades: UtilidadesNetas;
   top_productos: RankingProducto[];
+  slow_movers: RankingProducto[];
+  rendimiento_sucursales: ResumenVentasSucursal[];
+  ventas_por_dia: VentasPorDia[];
 }

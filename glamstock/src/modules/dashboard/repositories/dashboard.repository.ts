@@ -6,6 +6,7 @@ import {
   EstadisticasGenerales,
   ProductosPorSucursal,
   UtilidadesNetas,
+  VentasPorDia,
 } from '../types/dashboard.types';
 export { refreshRankingViews } from '@/lib/db/refresh-views';
 
@@ -95,9 +96,28 @@ export class DashboardRepository {
 
   /**
    * Obtiene los N productos MÁS vendidos en TODAS las sucursales.
-   * Fuente: vista_ranking_productos_global (materializada).
+   * Si hay fechas, ejecuta consulta dinámica, si no usa vista_ranking_productos_global.
    */
-  static async getMasVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
+  static async getMasVendidosGlobal(limit: number = 10, fechaInicio?: Date, fechaFin?: Date): Promise<RankingProducto[]> {
+    if (fechaInicio && fechaFin) {
+      const query = `
+        SELECT
+          pm.id_producto_maestro, pm.sku, pm.nombre AS nombre_producto,
+          v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta,
+          COALESCE(SUM(vb.cantidad), 0) AS total_unidades_vendidas,
+          COALESCE(ROUND(SUM(vb.precio_venta_final * vb.cantidad), 2), 0) AS ingresos_totales,
+          COALESCE(ROUND(SUM((vb.precio_venta_final - v.precio_adquisicion) * vb.cantidad), 2), 0) AS utilidad_total
+        FROM variantes v
+        JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
+        LEFT JOIN ventas_bajas vb ON vb.id_variante = v.id_variante AND vb.fecha_hora BETWEEN $2 AND $3
+        GROUP BY pm.id_producto_maestro, pm.sku, pm.nombre, v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
+        ORDER BY total_unidades_vendidas DESC, pm.nombre ASC
+        LIMIT $1;
+      `;
+      const { rows } = await db.query(query, [limit, fechaInicio, fechaFin]);
+      return rows.map(mapRankingProducto);
+    }
+
     const { rows } = await db.query(
       `SELECT * FROM vista_ranking_productos_global
        ORDER BY ranking_mas_vendido ASC
@@ -109,10 +129,27 @@ export class DashboardRepository {
 
   /**
    * Obtiene los N productos MENOS vendidos en TODAS las sucursales.
-   * Incluye variantes con 0 ventas para detectar productos sin rotación.
-   * Fuente: vista_ranking_productos_global (materializada).
    */
-  static async getMenosVendidosGlobal(limit: number = 10): Promise<RankingProducto[]> {
+  static async getMenosVendidosGlobal(limit: number = 10, fechaInicio?: Date, fechaFin?: Date): Promise<RankingProducto[]> {
+    if (fechaInicio && fechaFin) {
+      const query = `
+        SELECT
+          pm.id_producto_maestro, pm.sku, pm.nombre AS nombre_producto,
+          v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta,
+          COALESCE(SUM(vb.cantidad), 0) AS total_unidades_vendidas,
+          COALESCE(ROUND(SUM(vb.precio_venta_final * vb.cantidad), 2), 0) AS ingresos_totales,
+          COALESCE(ROUND(SUM((vb.precio_venta_final - v.precio_adquisicion) * vb.cantidad), 2), 0) AS utilidad_total
+        FROM variantes v
+        JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
+        LEFT JOIN ventas_bajas vb ON vb.id_variante = v.id_variante AND vb.fecha_hora BETWEEN $2 AND $3
+        GROUP BY pm.id_producto_maestro, pm.sku, pm.nombre, v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
+        ORDER BY total_unidades_vendidas ASC, pm.nombre ASC, v.modelo ASC, v.color ASC
+        LIMIT $1;
+      `;
+      const { rows } = await db.query(query, [limit, fechaInicio, fechaFin]);
+      return rows.map(mapRankingProducto);
+    }
+
     const { rows } = await db.query(
       `SELECT * FROM vista_ranking_productos_global
        ORDER BY ranking_menos_vendido ASC
@@ -154,9 +191,37 @@ export class DashboardRepository {
 
   /**
    * Obtiene los KPIs de ventas por cada sucursal activa.
-   * Fuente: vista_resumen_ventas_por_sucursal (view regular, siempre fresca).
    */
-  static async getResumenVentasPorSucursal(): Promise<ResumenVentasSucursal[]> {
+  static async getResumenVentasPorSucursal(fechaInicio?: Date, fechaFin?: Date): Promise<ResumenVentasSucursal[]> {
+    if (fechaInicio && fechaFin) {
+      const query = `
+        SELECT
+          s.id_sucursal,
+          s.nombre_lugar AS nombre_sucursal,
+          COUNT(vb.id_transaccion) AS total_transacciones,
+          COALESCE(SUM(vb.cantidad), 0) AS total_unidades_vendidas,
+          COALESCE(ROUND(SUM(vb.precio_venta_final * vb.cantidad), 2), 0) AS ingresos_brutos,
+          COALESCE(ROUND(SUM(v.precio_adquisicion * vb.cantidad), 2), 0) AS costo_total,
+          COALESCE(ROUND(SUM((vb.precio_venta_final - v.precio_adquisicion) * vb.cantidad), 2), 0) AS utilidad_neta
+        FROM sucursales s
+        LEFT JOIN ventas_bajas vb ON vb.id_sucursal = s.id_sucursal AND vb.fecha_hora BETWEEN $1 AND $2
+        LEFT JOIN variantes v ON vb.id_variante = vb.id_variante
+        WHERE s.activo = TRUE
+        GROUP BY s.id_sucursal, s.nombre_lugar
+        ORDER BY s.nombre_lugar;
+      `;
+      const { rows } = await db.query(query, [fechaInicio, fechaFin]);
+      return rows.map(r => ({
+        id_sucursal: Number(r.id_sucursal),
+        nombre_sucursal: r.nombre_sucursal,
+        total_transacciones: Number(r.total_transacciones),
+        total_unidades_vendidas: Number(r.total_unidades_vendidas),
+        ingresos_brutos: Number(r.ingresos_brutos),
+        costo_total: Number(r.costo_total),
+        utilidad_neta: Number(r.utilidad_neta),
+      }));
+    }
+
     const { rows } = await db.query(`SELECT * FROM vista_resumen_ventas_por_sucursal;`);
     return rows.map(r => ({
       id_sucursal: Number(r.id_sucursal),
@@ -165,6 +230,42 @@ export class DashboardRepository {
       total_unidades_vendidas: Number(r.total_unidades_vendidas),
       ingresos_brutos: Number(r.ingresos_brutos),
       costo_total: Number(r.costo_total),
+      utilidad_neta: Number(r.utilidad_neta),
+    }));
+  }
+
+  /**
+   * Obtiene la tendencia de ventas agrupada por día.
+   */
+  static async getVentasPorDia(fechaInicio?: Date, fechaFin?: Date): Promise<VentasPorDia[]> {
+    const condiciones: string[] = [];
+    const params: unknown[] = [];
+
+    if (fechaInicio && fechaFin) {
+      params.push(fechaInicio, fechaFin);
+      condiciones.push(`vb.fecha_hora BETWEEN $${params.length - 1} AND $${params.length}`);
+    }
+
+    const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
+
+    const query = `
+      SELECT
+        TO_CHAR(vb.fecha_hora, 'YYYY-MM-DD') AS fecha,
+        COUNT(vb.id_transaccion) AS total_ventas,
+        COALESCE(ROUND(SUM(vb.precio_venta_final * vb.cantidad), 2), 0) AS ingresos_brutos,
+        COALESCE(ROUND(SUM((vb.precio_venta_final - v.precio_adquisicion) * vb.cantidad), 2), 0) AS utilidad_neta
+      FROM ventas_bajas vb
+      JOIN variantes v ON vb.id_variante = v.id_variante
+      ${whereClause}
+      GROUP BY TO_CHAR(vb.fecha_hora, 'YYYY-MM-DD')
+      ORDER BY fecha ASC;
+    `;
+    const { rows } = await db.query(query, params);
+    
+    return rows.map(r => ({
+      fecha: r.fecha as string,
+      total_ventas: Number(r.total_ventas),
+      ingresos_brutos: Number(r.ingresos_brutos),
       utilidad_neta: Number(r.utilidad_neta),
     }));
   }
