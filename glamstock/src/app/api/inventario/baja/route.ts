@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/modules/auth/middleware/jwt.middleware';
 import { InventarioService } from '@/modules/inventario/services/inventario.service';
-import { verifyToken } from '@/modules/auth/middleware/jwt.middleware';
-import { isAppError } from '@/lib/errors/app-error';
+import { InventarioRepository } from '@/modules/inventario/repositories/inventario.repository';
+import { isAppError, NotFoundError } from '@/lib/errors/app-error';
 import { z } from 'zod';
 import { idSchema } from '@/lib/validations/common.schemas';
 import { MOTIVOS_VALIDOS } from '@/modules/inventario/schemas/inventario.schema';
-import { db } from '@/lib/db/client';
-import { NotFoundError } from '@/lib/errors/app-error';
 
 const registrarBajaApiSchema = z.object({
   id_variante: idSchema,
@@ -18,15 +17,8 @@ const registrarBajaApiSchema = z.object({
   precio_venta_final: z.coerce.number().nonnegative('El precio no puede ser negativo'),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, payload: { userId: number }) => {
   try {
-    // 1. Verificar autenticación
-    const payload = verifyToken(req);
-    if (!payload) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    // 2. Parsear y validar el body con Zod
     const body = await req.json();
     const resultado = registrarBajaApiSchema.safeParse(body);
 
@@ -45,16 +37,11 @@ export async function POST(req: NextRequest) {
 
     const { id_variante, id_sucursal, motivo, cantidad, precio_venta_final } = resultado.data;
 
-    // 3. Resolver id_motivo a partir del texto del motivo
-    const motivoQuery = `SELECT id_motivo FROM motivos_transaccion WHERE descripcion = $1;`;
-    const { rows: motivoRows } = await db.query(motivoQuery, [motivo]);
-
-    if (motivoRows.length === 0) {
+    const id_motivo = await InventarioRepository.findMotivoPorDescripcion(motivo);
+    if (id_motivo === null) {
       throw new NotFoundError(`Motivo de transacción no encontrado: "${motivo}"`);
     }
-    const id_motivo: number = motivoRows[0].id_motivo;
 
-    // 4. Registrar la baja (valida stock internamente, lanza ValidationError si insuficiente)
     const baja = await InventarioService.registrarBaja({
       id_variante,
       id_sucursal,
@@ -64,13 +51,6 @@ export async function POST(req: NextRequest) {
       precio_venta_final,
     });
 
-    console.log(
-      `[INVENTARIO] BAJA | variante=${id_variante} sucursal=${id_sucursal} ` +
-      `cantidad=${cantidad} motivo="${motivo}" usuario=${payload.userId} ` +
-      `stock_resultante=${baja.stock_resultante} transaccion=${baja.id_transaccion}`
-    );
-
-    // 5. Retornar respuesta con stock resultante
     return NextResponse.json(
       {
         message: 'Baja de inventario registrada correctamente',
@@ -83,7 +63,6 @@ export async function POST(req: NextRequest) {
     if (isAppError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
-    console.error('Error en POST /api/inventario/baja:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+});

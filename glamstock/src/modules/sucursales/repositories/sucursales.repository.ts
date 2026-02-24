@@ -168,6 +168,15 @@ export class SucursalesRepository {
 
     const { rows } = await db.query(query, valores);
     return rows;
-}
+    }
 
+
+    
+    static async findActivas(): Promise<Sucursal[]> {
+    const { rows } = await db.query(
+    `SELECT id_sucursal, nombre_lugar, ubicacion, activo, created_at
+     FROM sucursales WHERE activo = TRUE ORDER BY nombre_lugar;`
+     );
+     return rows;
+    }
 }

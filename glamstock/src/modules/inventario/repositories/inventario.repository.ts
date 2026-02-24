@@ -129,4 +129,21 @@ export class InventarioRepository {
     }
     return rows[0].stock_actual;
   }
+
+  static async findAllMotivos(): Promise<{ id_motivo: number; descripcion: string }[]> {
+    const { rows } = await db.query(
+      'SELECT id_motivo, descripcion FROM motivos_transaccion ORDER BY id_motivo;'
+    );
+    return rows;
+  }
+
+  static async findMotivoPorDescripcion(descripcion: string): Promise<number | null> {
+    const { rows } = await db.query(
+      'SELECT id_motivo FROM motivos_transaccion WHERE descripcion = $1;',
+      [descripcion]
+    );
+    return rows[0]?.id_motivo ?? null;
+  }
+  
 }
+
