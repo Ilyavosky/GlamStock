@@ -1,0 +1,108 @@
+.card {
+  background-color: var(--foreground-color, #ffffff);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.cardTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-color, #1e293b);
+  margin: 0;
+}
+
+.cardSubtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  margin: 0 0 0.5rem 0;
+}
+
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  max-height: 350px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: var(--background-hover, #f8fafc);
+  border-radius: 8px;
+  gap: 1rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.rankBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background-color: var(--primary-color, #2563eb);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.rankBadgeWarning {
+  background-color: #f59e0b;
+}
+
+.itemDetails {
+  flex: 1;
+  min-width: 0; /* Ensures text truncation works */
+}
+
+.itemName {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-color, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemMeta {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  margin-top: 0.25rem;
+}
+
+.itemStats {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.statPrimary {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color, #1e293b);
+}
+
+.statSecondary {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  margin-top: 0.25rem;
+}
+
+.textDanger {
+  color: #ef4444;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
