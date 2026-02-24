@@ -6,7 +6,6 @@ import formStyles from './form.module.css';
 import styles from './Infoproducto.module.css';
 import type { ProductoConVariantes } from '@/modules/productos/types/productos.types';
 
-
 interface SelectVarianteModalProps {
   open: boolean;
   productoId: number | null;
@@ -26,7 +25,7 @@ export default function SelectVarianteModal({ open, productoId, onClose, onSelec
       try {
         const res = await fetch(`/api/productos/${productoId}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Error al cargar variante');
-        const json = await res.json();
+        const json: ProductoConVariantes = await res.json();
         if (active) setData(json);
       } catch (err) {
         console.error(err);
@@ -44,7 +43,7 @@ export default function SelectVarianteModal({ open, productoId, onClose, onSelec
     <Dialog open={open} onClose={onClose} title="Seleccionar Variante para Editar">
       {loading ? (
         <p className={formStyles.loadingText}>Cargando variantes...</p>
-      ) : !data || !data.variantes || data.variantes.length === 0 ? (
+      ) : !data || data.variantes.length === 0 ? (
         <p className={formStyles.error}>Este producto no tiene variantes configuradas.</p>
       ) : (
         <div className={styles.section}>
@@ -52,14 +51,14 @@ export default function SelectVarianteModal({ open, productoId, onClose, onSelec
             Selecciona la variante de <strong>{data.nombre}</strong> que deseas editar:
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {data.variantes.map((v: any) => (
-              <div 
-                key={v.id_variante} 
+            {data.variantes.map((v) => (
+              <div
+                key={v.id_variante}
                 className={styles.row}
-                style={{ 
-                  border: '1px solid #e5e7eb', 
-                  borderRadius: '8px', 
-                  padding: '12px', 
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '12px',
                   cursor: 'pointer',
                   transition: 'border-color 0.2s, background-color 0.2s'
                 }}
