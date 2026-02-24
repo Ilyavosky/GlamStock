@@ -2,21 +2,7 @@
 
 import { useState } from 'react';
 import styles from './SucursalCard.module.css';
-
-export interface InventarioItem {
-  id_inventario: number;
-  id_variante: number;
-  id_sucursal: number;
-  stock_actual: number;
-  sku_producto: string;
-  nombre_producto: string;
-  codigo_barras: string;
-  modelo: string | null;
-  color: string | null;
-  precio_venta: number;
-  precio_adquisicion?: number;
-  valor_total: number;
-}
+import {InventarioItem} from '@/modules/inventario/types/inventario.types'
 
 interface SucursalCardProps {
   nombre: string;

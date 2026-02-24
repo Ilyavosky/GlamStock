@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { DashboardStats, ProductoFila, SucursalData, Producto } from '@/types/dashboard-view.types';
-import type { InventarioItem } from '@/app/(dashboard)/sucursales/SucursalCard';
+import {InventarioItem} from '@/modules/inventario/types/inventario.types'
 
 interface UseDashboardDataResult {
   stats: DashboardStats | null;
