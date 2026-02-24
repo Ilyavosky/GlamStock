@@ -1,5 +1,4 @@
-import type { InventarioItem } from '@/app/(dashboard)/sucursales/SucursalCard';
-
+import type { InventarioItem } from '@/modules/inventario/types/inventario.types';
 export interface DashboardStats {
   estadisticas: {
     total_productos_unicos: number;
