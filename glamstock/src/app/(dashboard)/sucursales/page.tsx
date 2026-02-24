@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
-import SucursalCard, { InventarioItem } from './SucursalCard';
+import SucursalCard from './SucursalCard';
 import EditVarianteModal from '../inventario/EditVarianteModal';
 import InfoVarianteModal from '../inventario/InfoVarianteModal';
 import AjusteStockModal from '../inventario/AjusteStockModal';
 import type { Sucursal, SucursalConInventario, VarianteProducto, Producto } from '@/types/sucursales-view.types';
+import type { InventarioItem } from '@/modules/inventario/types/inventario.types';
 import styles from './page.module.css';
 
 export default function SucursalesPage() {

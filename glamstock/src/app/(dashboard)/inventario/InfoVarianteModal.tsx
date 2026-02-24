@@ -1,6 +1,7 @@
 import Dialog from '@/components/ui/Dialog';
 import styles from './Infoproducto.module.css';
 import formStyles from './form.module.css';
+import { VarianteInfo } from '@/modules/productos/types/variantes.types';
 import { useState, useEffect } from 'react';
 
 interface InfoVarianteModalProps {
@@ -11,7 +12,7 @@ interface InfoVarianteModalProps {
 }
 
 export default function InfoVarianteModal({ open, varianteId, inventarioId, onClose }: InfoVarianteModalProps) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<VarianteInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

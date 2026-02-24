@@ -33,3 +33,14 @@ export interface UpdateVarianteInput {
   precio_adquisicion?: number;
   precio_venta_etiqueta?: number;
 }
+
+export interface VarianteInfo {
+  nombre: string;
+  sku: string;
+  codigo_barras: string | null;
+  modelo: string | null;
+  color: string | null;
+  precio_adquisicion: number;
+  precio_venta_etiqueta: number;
+  stock: number;
+}

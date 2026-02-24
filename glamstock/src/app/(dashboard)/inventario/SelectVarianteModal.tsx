@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import formStyles from './form.module.css';
 import styles from './Infoproducto.module.css';
+import type { ProductoConVariantes } from '@/modules/productos/types/productos.types';
+
 
 interface SelectVarianteModalProps {
   open: boolean;
@@ -13,7 +15,7 @@ interface SelectVarianteModalProps {
 }
 
 export default function SelectVarianteModal({ open, productoId, onClose, onSelect }: SelectVarianteModalProps) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ProductoConVariantes | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
