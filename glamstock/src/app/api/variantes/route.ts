@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/modules/auth/middleware/jwt.middleware';
 import { VariantesService } from '@/modules/productos/services/variantes.service';
-import { AppError } from '@/lib/errors/app-error';
+import { isAppError } from '@/lib/errors/app-error';
 import { z } from 'zod';
 import { varianteSchema } from '@/modules/productos/schemas/producto.schema';
 
@@ -30,7 +30,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     
     return NextResponse.json(nuevaVariante, { status: 201 });
   } catch (error) {
-    if (error instanceof AppError) {
+    if (isAppError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });

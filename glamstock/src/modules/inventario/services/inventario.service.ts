@@ -221,10 +221,9 @@ export class InventarioService {
 
       await client.query('COMMIT');
 
-      // 3. Log de auditoría (fuera de la transacción, es solo logging)
       const tipo = data.cantidad > 0 ? 'ENTRADA' : 'SALIDA';
-      console.log(
-        `[INVENTARIO] ${tipo} | variante=${data.id_variante} sucursal=${data.id_sucursal} ` +
+      console.info(
+        `[AUDITORIA] INVENTARIO_${tipo} | variante=${data.id_variante} sucursal=${data.id_sucursal} ` +
         `cantidad=${data.cantidad} motivo="${data.motivo}" usuario=${data.id_usuario} ` +
         `stock_nuevo=${updatedRows[0].stock_actual} transaccion=${transRows[0].id_transaccion}`
       );
