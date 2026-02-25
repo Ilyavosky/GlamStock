@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Table, { Column } from "@/components/ui/Table";
 import SearchInput from "@/components/ui/SearchInput";
 import Button from "@/components/ui/Button";
@@ -13,6 +13,9 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import type { ProductoFila } from "@/types/dashboard-view.types";
 import styles from "./page.module.css";
 import kpiStyles from './kpiCards.module.css';
+
+type SortField = 'sku' | 'nombre' | 'totalStock' | 'valorOriginal' | 'valorVenta' | 'cantidadVariantes' | 'utilidad';
+type SortOrder = 'asc' | 'desc';
 
 export default function DashboardPage() {
   const {
@@ -32,14 +35,9 @@ export default function DashboardPage() {
   const [periodo, setPeriodo] = useState('30dias');
   const [stockFilter, setStockFilter] = useState('todos');
   const [variantFilter, setVariantFilter] = useState('todos');
-
-  const displayProductos = (filteredInit ? filtered : productos).filter((p) => {
-    if (stockFilter === 'agotados' && p.totalStock > 0) return false;
-    if (stockFilter === 'con_stock' && p.totalStock === 0) return false;
-    if (variantFilter === 'sin_variantes' && p.cantidadVariantes > 0) return false;
-    if (variantFilter === 'con_variantes' && p.cantidadVariantes === 0) return false;
-    return true;
-  });
+  
+  const [sortField, setSortField] = useState<SortField>('nombre');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   const handleSearch = useCallback(
     (term: string) => {
@@ -60,23 +58,87 @@ export default function DashboardPage() {
     [productos],
   );
 
+  const displayProductos = useMemo(() => {
+    let result = [...(filteredInit ? filtered : productos)];
+
+    // Apply stock/variant filters
+    result = result.filter((p) => {
+      if (stockFilter === 'agotados' && p.totalStock > 0) return false;
+      if (stockFilter === 'con_stock' && p.totalStock === 0) return false;
+      if (variantFilter === 'sin_variantes' && p.cantidadVariantes > 0) return false;
+      if (variantFilter === 'con_variantes' && p.cantidadVariantes === 0) return false;
+      return true;
+    });
+
+    // Apply sorting
+    result.sort((a, b) => {
+      let valA: any = '';
+      let valB: any = '';
+
+      switch (sortField) {
+        case 'sku': valA = a.sku || ''; valB = b.sku || ''; break;
+        case 'nombre': valA = a.nombre || ''; valB = b.nombre || ''; break;
+        case 'totalStock': valA = a.totalStock; valB = b.totalStock; break;
+        case 'valorOriginal': valA = a.valorOriginal; valB = b.valorOriginal; break;
+        case 'valorVenta': valA = a.valorVenta; valB = b.valorVenta; break;
+        case 'cantidadVariantes': valA = a.cantidadVariantes; valB = b.cantidadVariantes; break;
+        case 'utilidad': 
+          valA = a.valorVenta - a.valorOriginal;
+          valB = b.valorVenta - b.valorOriginal;
+          break;
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [filteredInit, filtered, productos, stockFilter, variantFilter, sortField, sortOrder]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field as SortField);
+      setSortOrder('asc');
+    }
+  };
+
   const valorInventario = productos.reduce((acc, p) => acc + p.valorVenta, 0);
 
   const columnas: Column<ProductoFila>[] = [
-    { header: "SKU", key: "sku" },
-    { header: "Productos", key: "nombre" },
-    { header: "Total Stock", key: "totalStock" },
+    { header: "SKU", key: "sku", sortable: true },
+    { header: "Productos", key: "nombre", sortable: true },
+    { header: "Total Stock", key: "totalStock", sortable: true },
     {
       header: "Valor original",
       key: "valorOriginal",
+      sortable: true,
       render: (r) => `$${r.valorOriginal.toLocaleString()}`,
     },
     {
       header: "Valor venta",
       key: "valorVenta",
+      sortable: true,
       render: (r) => `$${r.valorVenta.toLocaleString()}`,
     },
-    { header: "Cant. variantes", key: "cantidadVariantes" },
+    { 
+      header: "Utilidad", 
+      key: "utilidad",
+      sortable: true,
+      render: (r) => {
+        const g = r.valorVenta - r.valorOriginal;
+        const m = r.valorVenta > 0 ? ((g / r.valorVenta) * 100).toFixed(1) : '0.0';
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+             <span style={{ fontWeight: 600, color: '#059669' }}>${g.toLocaleString()}</span>
+             <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({m}%)</span>
+          </div>
+        );
+      }
+    },
+    { header: "Cant. variantes", key: "cantidadVariantes", sortable: true },
   ];
 
   return (
@@ -210,6 +272,9 @@ export default function DashboardPage() {
             headers={columnas}
             data={displayProductos}
             emptyMessage="Sin productos registrados"
+            onSort={handleSort}
+            sortField={sortField}
+            sortOrder={sortOrder}
           />
         </div>
       )}
