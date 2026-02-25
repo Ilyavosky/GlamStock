@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/modules/auth/middleware/jwt.middleware';
-import { AppError } from '@/lib/errors/app-error';
+import { isAppError } from '@/lib/errors/app-error';
 import { idSchema } from '@/lib/validations/common.schemas';
-import { db } from '@/lib/db/client';
+import { InventarioRepository } from '@/modules/inventario/repositories/inventario.repository';
 import { z } from 'zod';
 
 const updateStockSchema = z.object({
   stock_actual: z.coerce.number().int().nonnegative('El stock no puede ser negativo'),
 });
 
-export const GET = withAuth(async (req: NextRequest, _payload: unknown, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withAuth(async (_req: NextRequest, _payload: unknown, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     const idValidation = idSchema.safeParse(id);
@@ -18,14 +18,17 @@ export const GET = withAuth(async (req: NextRequest, _payload: unknown, { params
       return NextResponse.json({ error: 'ID de inventario inválido' }, { status: 400 });
     }
 
-    const { rows } = await db.query('SELECT * FROM inventario_sucursal WHERE id_inventario = $1', [idValidation.data]);
+    const registro = await InventarioRepository.findById(idValidation.data);
 
-    if (rows.length === 0) {
+    if (!registro) {
       return NextResponse.json({ error: 'Registro de inventario no encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json({ data: rows[0] });
+    return NextResponse.json({ data: registro }, { status: 200 });
   } catch (error) {
+    if (isAppError(error)) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 });
@@ -44,28 +47,26 @@ export const PUT = withAuth(async (req: NextRequest, _payload: unknown, { params
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Datos inválidos', detalles: validation.error.format() },
+        {
+          error: 'Datos inválidos',
+          detalles: validation.error.issues.map((i) => ({
+            campo: i.path.join('.'),
+            mensaje: i.message,
+          })),
+        },
         { status: 400 }
       );
     }
 
-    const { stock_actual } = validation.data;
+    const registro = await InventarioRepository.updateStockById(idValidation.data, validation.data.stock_actual);
 
-    const query = `
-      UPDATE inventario_sucursal
-      SET stock_actual = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id_inventario = $2
-      RETURNING id_inventario, id_variante, id_sucursal, stock_actual, updated_at;
-    `;
-    const { rows } = await db.query(query, [stock_actual, idValidation.data]);
-
-    if (rows.length === 0) {
+    if (!registro) {
       return NextResponse.json({ error: 'Registro de inventario no encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json({ data: rows[0] });
+    return NextResponse.json({ data: registro }, { status: 200 });
   } catch (error) {
-    if (error instanceof AppError) {
+    if (isAppError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });

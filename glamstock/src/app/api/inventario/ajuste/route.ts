@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/modules/auth/middleware/jwt.middleware';
 import { InventarioService } from '@/modules/inventario/services/inventario.service';
 import { ajusteInventarioApiSchema } from '@/modules/inventario/schemas/inventario.schema';
-import { verifyToken } from '@/modules/auth/middleware/jwt.middleware';
 import { isAppError } from '@/lib/errors/app-error';
+import { JWTPayload } from '@/modules/auth/types/auth.types';
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, payload: JWTPayload) => {
   try {
-    // 1. Verificar autenticación
-    const payload = verifyToken(req);
-    if (!payload) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    // 2. Parsear y validar body con Zod
     const body = await req.json();
     const resultado = ajusteInventarioApiSchema.safeParse(body);
 
@@ -31,7 +25,6 @@ export async function POST(req: NextRequest) {
 
     const { id_variante, id_sucursal, cantidad, motivo } = resultado.data;
 
-    // 3. Ejecutar ajuste de inventario con logging de auditoría
     const ajuste = await InventarioService.executarAjustePorCantidad({
       id_variante,
       id_sucursal,
@@ -40,7 +33,6 @@ export async function POST(req: NextRequest) {
       id_usuario: payload.userId,
     });
 
-    // 4. Retornar respuesta descriptiva con nuevo stock
     return NextResponse.json(
       {
         message: 'Ajuste de inventario realizado correctamente',
@@ -53,7 +45,6 @@ export async function POST(req: NextRequest) {
     if (isAppError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
-    console.error('Error en POST /api/inventario/ajuste:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+});

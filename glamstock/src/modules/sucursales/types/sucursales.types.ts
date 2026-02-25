@@ -11,7 +11,7 @@ export interface Sucursal {
 export interface CreateSucursalInput{
     nombre_lugar: string;
     ubicacion: string;
-    activo: boolean;
+    activo?: boolean;
 }
 
 //interfaz para actualizar una sucursal

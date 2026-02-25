@@ -144,6 +144,27 @@ export class InventarioRepository {
     );
     return rows[0]?.id_motivo ?? null;
   }
+
+  static async findById(id_inventario: number): Promise<InventarioSucursal | null> {
+  const query = `
+    SELECT id_inventario, id_variante, id_sucursal, stock_actual, updated_at
+    FROM inventario_sucursal
+    WHERE id_inventario = $1;
+  `;
+  const { rows } = await db.query(query, [id_inventario]);
+  return rows[0] || null;
+}
+
+static async updateStockById(id_inventario: number, stock_actual: number): Promise<InventarioSucursal | null> {
+  const query = `
+    UPDATE inventario_sucursal
+    SET stock_actual = $1, updated_at = CURRENT_TIMESTAMP
+    WHERE id_inventario = $2
+    RETURNING id_inventario, id_variante, id_sucursal, stock_actual, updated_at;
+  `;
+  const { rows } = await db.query(query, [stock_actual, id_inventario]);
+  return rows[0] || null;
+}
   
 }
 
