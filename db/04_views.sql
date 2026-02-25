@@ -56,6 +56,7 @@ SELECT
 FROM variantes v
 JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
 LEFT JOIN ventas_bajas  vb ON vb.id_variante = v.id_variante
+WHERE EXISTS (SELECT 1 FROM inventario_sucursal i WHERE i.id_variante = v.id_variante AND i.stock_actual > 0)
 GROUP BY
   pm.id_producto_maestro, pm.sku, pm.nombre,
   v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
@@ -105,6 +106,10 @@ JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
 LEFT JOIN ventas_bajas  vb ON vb.id_variante = v.id_variante
                            AND vb.id_sucursal = s.id_sucursal
 WHERE s.activo = TRUE
+AND EXISTS (
+  SELECT 1 FROM inventario_sucursal i 
+  WHERE i.id_variante = v.id_variante AND i.id_sucursal = s.id_sucursal AND i.stock_actual > 0
+)
 GROUP BY
   s.id_sucursal, s.nombre_lugar,
   pm.id_producto_maestro, pm.sku, pm.nombre,
