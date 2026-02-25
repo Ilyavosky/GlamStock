@@ -142,6 +142,7 @@ export class DashboardRepository {
         FROM variantes v
         JOIN productos_maestros pm ON v.id_producto_maestro = pm.id_producto_maestro
         LEFT JOIN ventas_bajas vb ON vb.id_variante = v.id_variante AND vb.fecha_hora BETWEEN $2 AND $3
+        WHERE EXISTS (SELECT 1 FROM inventario_sucursal i WHERE i.id_variante = v.id_variante AND i.stock_actual > 0)
         GROUP BY pm.id_producto_maestro, pm.sku, pm.nombre, v.id_variante, v.sku_variante, v.modelo, v.color, v.precio_adquisicion, v.precio_venta_etiqueta
         ORDER BY total_unidades_vendidas ASC, pm.nombre ASC, v.modelo ASC, v.color ASC
         LIMIT $1;
@@ -152,6 +153,7 @@ export class DashboardRepository {
 
     const { rows } = await db.query(
       `SELECT * FROM vista_ranking_productos_global
+       WHERE EXISTS (SELECT 1 FROM inventario_sucursal i WHERE i.id_variante = vista_ranking_productos_global.id_variante AND i.stock_actual > 0)
        ORDER BY ranking_menos_vendido ASC
        LIMIT $1;`,
       [limit]
@@ -182,6 +184,7 @@ export class DashboardRepository {
     const { rows } = await db.query(
       `SELECT * FROM vista_ranking_productos_por_sucursal
        WHERE id_sucursal = $1
+       AND EXISTS (SELECT 1 FROM inventario_sucursal i WHERE i.id_variante = vista_ranking_productos_por_sucursal.id_variante AND i.id_sucursal = $1 AND i.stock_actual > 0)
        ORDER BY ranking_menos_vendido ASC
        LIMIT $2;`,
       [id_sucursal, limit]
@@ -205,7 +208,7 @@ export class DashboardRepository {
           COALESCE(ROUND(SUM((vb.precio_venta_final - v.precio_adquisicion) * vb.cantidad), 2), 0) AS utilidad_neta
         FROM sucursales s
         LEFT JOIN ventas_bajas vb ON vb.id_sucursal = s.id_sucursal AND vb.fecha_hora BETWEEN $1 AND $2
-        LEFT JOIN variantes v ON vb.id_variante = vb.id_variante
+        LEFT JOIN variantes v ON v.id_variante = vb.id_variante
         WHERE s.activo = TRUE
         GROUP BY s.id_sucursal, s.nombre_lugar
         ORDER BY s.nombre_lugar;

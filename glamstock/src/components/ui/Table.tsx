@@ -5,6 +5,7 @@ export interface Column<T> {
   header: string;
   key: string;
   render?: (row: T) => React.ReactNode;
+  sortable?: boolean;
 }
 
 interface TableProps<T> {
@@ -12,6 +13,9 @@ interface TableProps<T> {
   data: T[];
   renderRow?: (row: T, index: number) => React.ReactNode;
   emptyMessage?: string;
+  onSort?: (key: string) => void;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 function Table<T extends object>({
@@ -19,15 +23,28 @@ function Table<T extends object>({
   data,
   renderRow,
   emptyMessage = 'No hay datos disponibles',
+  onSort,
+  sortField,
+  sortOrder,
 }: TableProps<T>) {
+
+  const renderSortIcon = (key: string) => {
+    if (sortField !== key) return <span className={styles.sortIconPlaceholder}>↕</span>;
+    return <span className={styles.sortIconActive}>{sortOrder === 'asc' ? '↑' : '↓'}</span>;
+  };
+
   return (
     <div className={styles.tableWrapper}>
       <table className={styles.table}>
         <thead>
           <tr>
             {headers.map((col) => (
-              <th key={col.key} className={styles.th}>
-                {col.header}
+              <th 
+                key={col.key} 
+                className={`${styles.th} ${col.sortable ? styles.sortable : ''}`}
+                onClick={() => col.sortable && onSort && onSort(col.key)}
+              >
+                {col.header} {col.sortable && renderSortIcon(col.key)}
               </th>
             ))}
           </tr>

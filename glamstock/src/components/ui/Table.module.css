@@ -48,3 +48,26 @@
   color: #9ca3af;
   font-size: 0.9rem;
 }
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s;
+}
+
+.sortable:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.sortIconPlaceholder {
+  opacity: 0.3;
+  font-size: 0.8em;
+  margin-left: 0.3rem;
+}
+
+.sortIconActive {
+  color: #850E35;
+  font-weight: bold;
+  margin-left: 0.3rem;
+}

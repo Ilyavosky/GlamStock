@@ -191,15 +191,15 @@ SELECT
   s.id_sucursal,
   1,
   u.id_usuario,
-  1,
+  (floor(random() * 3 + 1))::int,
   v.precio_venta_etiqueta,
   NOW() - (INTERVAL '1 day' * gs.n)
 FROM variantes v
 CROSS JOIN sucursales s
-CROSS JOIN (SELECT generate_series(1, 30) AS n) gs
+CROSS JOIN (SELECT generate_series(1, 25) AS n) gs
 JOIN usuarios u ON u.rol = 'ADMIN'
-WHERE s.nombre_lugar IN ('Tienda Centro', 'Tienda Plaza')
-  AND gs.n % 3 = 0
-LIMIT 80;
+WHERE s.activo = TRUE AND random() > 0.6
+ORDER BY random()
+LIMIT 400;
 
 COMMIT;
