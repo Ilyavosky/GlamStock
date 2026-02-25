@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { CreateVarianteInput } from '../types/variantes.types';
 
-// 1. Variante (El item físico)
 export const varianteSchema = z.object({
   codigo_barras: z.string().min(3).max(100).optional(),
   modelo: z.string().max(100).optional().nullable(),
@@ -15,16 +14,19 @@ export const varianteSchema = z.object({
   path: ["precio_venta_etiqueta"],
 });
 
-// 2. Producto Maestro
 export const crearProductoMaestroSchema = z.object({
-  // SKU es opcional: si no se proporciona, el service lo genera automáticamente
   sku: z.string().min(3, 'El SKU debe tener al menos 3 caracteres').max(50).optional(),
   nombre: z.string().min(2).max(150),
-  // Un producto maestro puede crearse sin variantes iniciales
   variantes: z.array(varianteSchema).optional().default([]),
 });
 
-// VarianteDTO re-exporta CreateVarianteInput para evitar definiciones duplicadas
+export const updateProductoSchema = z.object({
+  sku: z.string().min(3, 'El SKU debe tener al menos 3 caracteres').max(50).optional(),
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(150).optional(),
+}).refine((data) => data.sku !== undefined || data.nombre !== undefined, {
+  message: 'Debe proporcionar al menos un campo para actualizar',
+});
+
 export type { CreateVarianteInput as VarianteDTO };
 export type CrearProductoDTO = z.infer<typeof crearProductoMaestroSchema>;
-
+export type UpdateProductoDTO = z.infer<typeof updateProductoSchema>;

@@ -14,7 +14,7 @@ export interface Variante {
 
 // DTOs de entrada
 export interface CreateVarianteInput {
-  sku_variante: string;
+  sku_variante?: string;
   codigo_barras?: string;
   modelo?: string | null;
   color?: string | null;
