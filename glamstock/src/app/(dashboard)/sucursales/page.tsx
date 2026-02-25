@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import SucursalCard from './SucursalCard';
+import SucursalDetail from './SucursalDetail';
 import EditVarianteModal from '../inventario/EditVarianteModal';
 import InfoVarianteModal from '../inventario/InfoVarianteModal';
 import AjusteStockModal from '../inventario/AjusteStockModal';
@@ -17,6 +18,9 @@ export default function SucursalesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [varianteToProductoMap, setVarianteToProductoMap] = useState<Map<number, number>>(new Map());
+
+  // New state to manage detail view
+  const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -141,16 +145,20 @@ export default function SucursalesPage() {
         </div>
       )}
 
-      <SearchInput placeholder="Buscar sucursales..." onSearch={handleSearch} />
+      {selectedSucursalId === null && (
+        <SearchInput placeholder="Buscar sucursales..." onSearch={handleSearch} />
+      )}
 
-      <div className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.title}>Sucursales</h1>
-          <p className={styles.subtitle}>
-            {loading ? 'Cargando...' : `${filtered.length} sucursales registradas`}
-          </p>
+      {selectedSucursalId === null && (
+        <div className={styles.pageHeader}>
+          <div>
+            <h1 className={styles.title}>Sucursales</h1>
+            <p className={styles.subtitle}>
+              {loading ? 'Cargando...' : `${filtered.length} sucursales registradas`}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className={styles.loadingPage}>
@@ -164,15 +172,17 @@ export default function SucursalesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className={styles.emptyPage}>Sin sucursales registradas</div>
-      ) : (
-        <div className={styles.grid}>
-          {filtered.map((s) => (
-            <SucursalCard
-              key={s.id_sucursal}
-              nombre={s.nombre_lugar}
-              ubicacion={s.ubicacion}
-              inventario={s.inventario}
-              loading={s.loadingInventario}
+      ) : selectedSucursalId !== null ? (
+        (() => {
+          const selected = sucursales.find(s => s.id_sucursal === selectedSucursalId);
+          if (!selected) return null;
+          return (
+            <SucursalDetail
+              nombre={selected.nombre_lugar}
+              ubicacion={selected.ubicacion}
+              inventario={selected.inventario}
+              loading={selected.loadingInventario}
+              onBack={() => setSelectedSucursalId(null)}
               onDelete={(idVariante) => {
                   const idProducto = varianteToProductoMap.get(idVariante);
                   if (idProducto) setDeleteTarget(idProducto);
@@ -180,6 +190,20 @@ export default function SucursalesPage() {
               onEdit={handleOpenEditVariante}
               onInfo={handleOpenInfoVariante}
               onAjustar={handleOpenAjusteStock}
+            />
+          );
+        })()
+      ) : (
+        <div className={styles.grid}>
+          {filtered.map((s) => (
+            <SucursalCard
+              key={s.id_sucursal}
+              id_sucursal={s.id_sucursal}
+              nombre={s.nombre_lugar}
+              ubicacion={s.ubicacion}
+              inventario={s.inventario}
+              loading={s.loadingInventario}
+              onViewDetails={setSelectedSucursalId}
             />
           ))}
         </div>

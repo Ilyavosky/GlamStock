@@ -1,112 +1,69 @@
 'use client';
 
-import { useState } from 'react';
 import styles from './SucursalCard.module.css';
 import {InventarioItem} from '@/modules/inventario/types/inventario.types'
 
 interface SucursalCardProps {
+  id_sucursal: number;
   nombre: string;
   ubicacion: string;
   inventario: InventarioItem[];
   loading: boolean;
-  onDelete: (idVariante: number) => void;
-  onEdit: (idVariante: number, idInventario: number) => void;
-  onInfo: (idVariante: number, idInventario: number) => void;
-  onAjustar: (idVariante: number, idSucursal: number) => void;
+  onViewDetails: (idSucursal: number) => void;
 }
 
-export default function SucursalCard({ nombre, ubicacion, inventario, loading, onDelete, onEdit, onInfo, onAjustar }: SucursalCardProps) {
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+export default function SucursalCard({ 
+  id_sucursal, 
+  nombre, 
+  ubicacion, 
+  inventario, 
+  loading, 
+  onViewDetails 
+}: SucursalCardProps) {
+  // Calculate quick stats
+  const totalVariantes = inventario.length;
+  const stockTotal = inventario.reduce((sum, item) => sum + (Number(item.stock_actual) || 0), 0);
 
   return (
-    <div className={styles.card} onClick={() => setOpenMenuId(null)}>
+    <div className={styles.card}>
       <div className={styles.header}>
-        <div>
+        <div className={styles.titleInfo}>
           <h2 className={styles.nombre}>{nombre}</h2>
           {ubicacion && <p className={styles.ubicacion}>{ubicacion}</p>}
         </div>
-        <p className={styles.total}>
-          Total productos: <strong>{loading ? '...' : inventario.length}</strong>
-        </p>
+        <div className={styles.iconWrapper}>
+          <svg className={styles.icon} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
       </div>
 
-      <div className={styles.tableWrapper}>
-        {loading ? (
-          <p className={styles.empty}>Cargando...</p>
-        ) : inventario.length === 0 ? (
-          <p className={styles.empty}>Sin productos en esta sucursal</p>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>SKU</th>
-                <th className={styles.th}>Productos</th>
-                <th className={styles.th}>Modelo</th>
-                <th className={styles.th}>Color</th>
-                <th className={styles.th}>Stock</th>
-                <th className={styles.th}>Valor original</th>
-                <th className={styles.th}>Valor venta</th>
-                <th className={styles.th}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventario.map((item) => (
-                <tr key={item.id_inventario} className={styles.tr}>
-                  <td className={styles.td}>{item.sku_producto}</td>
-                  <td className={styles.td}>{item.nombre_producto}</td>
-                  <td className={styles.td}>{item.modelo || '—'}</td>
-                  <td className={styles.td}>{item.color || '—'}</td>
-                  <td className={styles.td}>{item.stock_actual}</td>
-                  <td className={styles.td}>
-                    {item.precio_adquisicion != null
-                      ? `$${Number(item.precio_adquisicion).toLocaleString()}`
-                      : '—'}
-                  </td>
-                  <td className={styles.td}>${Number(item.precio_venta).toLocaleString()}</td>
-                  <td className={styles.td}>
-                    <div className={styles.menuWrapper}>
-                      <button
-                        className={styles.menuTrigger}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 120 });
-                          setOpenMenuId(openMenuId === item.id_inventario ? null : item.id_inventario);
-                        }}
-                      >•••</button>
-                      {openMenuId === item.id_inventario && menuPos && (
-                        <div
-                          className={styles.dropdown}
-                          style={{ top: menuPos.top, left: menuPos.left }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            className={`${styles.dropdownItem} ${styles.dropdownDanger}`}
-                            onClick={() => { setOpenMenuId(null); onDelete(item.id_variante); }}
-                          >Eliminar</button>
-                          <button
-                            className={styles.dropdownItem}
-                            onClick={() => { setOpenMenuId(null); onEdit(item.id_variante, item.id_inventario); }}
-                          >Editar</button>
-                          <button
-                            className={styles.dropdownItem}
-                            onClick={() => { setOpenMenuId(null); onInfo(item.id_variante, item.id_inventario); }}
-                          >Más info</button>
-                          <button
-                            className={`${styles.dropdownItem} ${styles.dropdownWarning}`}
-                            onClick={() => { setOpenMenuId(null); onAjustar(item.id_variante, item.id_sucursal); }}
-                            style={{ color: '#0ea5e9' }}
-                          >Ajustar stock</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <div className={styles.statsContainer}>
+        <div className={styles.statBox}>
+          <p className={styles.statLabel}>Variantes Registradas</p>
+          <p className={styles.statValue}>
+            {loading ? <span className={styles.pulse}>...</span> : totalVariantes}
+          </p>
+        </div>
+        <div className={styles.divider} />
+        <div className={styles.statBox}>
+          <p className={styles.statLabel}>Stock Total (Unid.)</p>
+          <p className={styles.statValue}>
+            {loading ? <span className={styles.pulse}>...</span> : stockTotal}
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.footer}>
+        <button 
+          className={styles.detailButton} 
+          onClick={() => onViewDetails(id_sucursal)}
+        >
+          Ver Detalles
+          <svg className={styles.buttonIcon} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
   );
