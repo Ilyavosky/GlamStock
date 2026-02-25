@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Table, { Column } from '@/components/ui/Table';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
@@ -22,6 +22,9 @@ import formStyles from './form.module.css';
 
 export interface Sucursal { id_sucursal: number; nombre_lugar: string; ubicacion: string; }
 
+type SortField = 'sku' | 'nombre' | 'totalStock' | 'valorOriginal' | 'valorVenta' | 'sucursal';
+type SortOrder = 'asc' | 'desc';
+
 const FORM_INITIAL: FormData = {
   nombre: "",
   sku: "",
@@ -41,6 +44,9 @@ export default function InventarioPage() {
   const [filtered, setFiltered] = useState<ProductoFila[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [sortField, setSortField] = useState<SortField>('nombre');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -134,6 +140,37 @@ export default function InventarioPage() {
       p.nombre.toLowerCase().includes(lower) || p.sku.toLowerCase().includes(lower)
     ));
   }, [productos]);
+
+  const sortedProductos = useMemo(() => {
+    const result = [...filtered];
+    result.sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      switch (sortField) {
+        case 'sku': valA = a.sku || ''; valB = b.sku || ''; break;
+        case 'nombre': valA = a.nombre || ''; valB = b.nombre || ''; break;
+        case 'totalStock': valA = a.totalStock; valB = b.totalStock; break;
+        case 'valorOriginal': valA = a.valorOriginal; valB = b.valorOriginal; break;
+        case 'valorVenta': valA = a.valorVenta; valB = b.valorVenta; break;
+        case 'sucursal': valA = a.sucursal || ''; valB = b.sucursal || ''; break;
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [filtered, sortField, sortOrder]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field as SortField);
+      setSortOrder('asc');
+    }
+  };
 
 
 
@@ -232,16 +269,16 @@ export default function InventarioPage() {
   };
 
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedProductos.length / ITEMS_PER_PAGE);
+  const paginated = sortedProductos.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const headers: Column<ProductoFila>[] = [
-    { header: 'SKU', key: 'sku' },
-    { header: 'Productos', key: 'nombre' },
-    { header: 'Total Stock', key: 'totalStock' },
-    { header: 'Valor original', key: 'valorOriginal', render: (row) => `$${row.valorOriginal.toLocaleString()}` },
-    { header: 'Valor venta', key: 'valorVenta', render: (row) => `$${row.valorVenta.toLocaleString()}` },
-    { header: 'Sucursal', key: 'sucursal' },
+    { header: 'SKU', key: 'sku', sortable: true },
+    { header: 'Productos', key: 'nombre', sortable: true },
+    { header: 'Total Stock', key: 'totalStock', sortable: true },
+    { header: 'Valor original', key: 'valorOriginal', sortable: true, render: (row) => `$${row.valorOriginal.toLocaleString()}` },
+    { header: 'Valor venta', key: 'valorVenta', sortable: true, render: (row) => `$${row.valorVenta.toLocaleString()}` },
+    { header: 'Sucursal', key: 'sucursal', sortable: true },
     {
       header: 'Acciones',
       key: 'acciones',
@@ -306,7 +343,14 @@ export default function InventarioPage() {
       ) : error ? (
         <p className={styles.errorText}>{error}</p>
       ) : (
-        <Table headers={headers} data={paginated} emptyMessage="No se encontraron productos" />
+        <Table 
+          headers={headers} 
+          data={paginated} 
+          emptyMessage="No se encontraron productos"
+          onSort={handleSort}
+          sortField={sortField}
+          sortOrder={sortOrder}
+        />
       )}
 
       {totalPages > 1 && (
