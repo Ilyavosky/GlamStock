@@ -72,8 +72,8 @@ export default function DashboardPage() {
 
     // Apply sorting
     result.sort((a, b) => {
-      let valA: any = '';
-      let valB: any = '';
+      let valA: string | number = '';
+      let valB: string | number = '';
 
       switch (sortField) {
         case 'sku': valA = a.sku || ''; valB = b.sku || ''; break;

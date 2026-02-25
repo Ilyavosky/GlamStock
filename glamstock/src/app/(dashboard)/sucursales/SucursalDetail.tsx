@@ -31,12 +31,10 @@ export default function SucursalDetail({
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   
-  // Local state for Search and Sort
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('nombre');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
-  // Calculates financial metrics
   const financialMetrics = useMemo(() => {
     let totalInversion = 0;
     let totalVenta = 0;
@@ -50,11 +48,9 @@ export default function SucursalDetail({
     return { totalInversion, totalVenta };
   }, [inventario]);
 
-  // Derived state: filtered and sorted inventory
   const filteredAndSorted = useMemo(() => {
     let result = [...inventario];
 
-    // Filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       result = result.filter(item => 
@@ -64,10 +60,9 @@ export default function SucursalDetail({
       );
     }
 
-    // Sort
     result.sort((a, b) => {
-      let valA: any = '';
-      let valB: any = '';
+      let valA: string | number = '';
+      let valB: string | number = '';
 
       switch (sortField) {
         case 'sku': valA = a.sku_producto || ''; valB = b.sku_producto || ''; break;
@@ -150,7 +145,7 @@ export default function SucursalDetail({
           ) : inventario.length === 0 ? (
             <p className={styles.empty}>Sin productos en esta sucursal</p>
           ) : filteredAndSorted.length === 0 ? (
-            <p className={styles.empty}>No hay resultados para "{searchTerm}"</p>
+            <p className={styles.empty}>No hay resultados para {searchTerm}</p>
           ) : (
             <table className={styles.table}>
               <thead>
@@ -184,7 +179,7 @@ export default function SucursalDetail({
                       <td className={styles.td}>{item.color || '—'}</td>
                       <td className={styles.td}>
                         <span className={`${styles.stockBadge} ${isLowStock ? styles.stockLow : styles.stockNormal}`}>
-                          {stock} {isLowStock && '⚠️'}
+                          {stock} {isLowStock && '!'}
                         </span>
                       </td>
                       <td className={styles.td}>${costo.toLocaleString()}</td>

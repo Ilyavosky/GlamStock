@@ -16,6 +16,7 @@ interface TableProps<T> {
   onSort?: (key: string) => void;
   sortField?: string;
   sortOrder?: 'asc' | 'desc';
+  rowKey?: (row: T) => string | number;
 }
 
 function Table<T extends object>({
@@ -26,6 +27,7 @@ function Table<T extends object>({
   onSort,
   sortField,
   sortOrder,
+  rowKey,
 }: TableProps<T>) {
 
   const renderSortIcon = (key: string) => {
@@ -60,7 +62,7 @@ function Table<T extends object>({
             data.map((row, i) => renderRow(row, i))
           ) : (
             data.map((row, i) => (
-              <tr key={i} className={styles.tr}>
+              <tr key={rowKey ? rowKey(row) : i} className={styles.tr}>
                 {headers.map((col) => (
                   <td key={col.key} className={styles.td}>
                     {col.render
