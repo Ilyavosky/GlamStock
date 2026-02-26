@@ -8,6 +8,7 @@ import SucursalDetail from './SucursalDetail';
 import EditVarianteModal from '../inventario/EditVarianteModal';
 import InfoVarianteModal from '../inventario/InfoVarianteModal';
 import AjusteStockModal from '../inventario/AjusteStockModal';
+import CreateSucursalModal from './CreateSucursal';
 import type { Sucursal, SucursalConInventario, VarianteProducto, Producto } from '@/types/sucursales-view.types';
 import type { InventarioItem } from '@/modules/inventario/types/inventario.types';
 import styles from './page.module.css';
@@ -19,11 +20,13 @@ export default function SucursalesPage() {
   const [error, setError] = useState('');
   const [varianteToProductoMap, setVarianteToProductoMap] = useState<Map<number, number>>(new Map());
 
-  // New state to manage detail view
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
-
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteSucursalTarget, setDeleteSucursalTarget] = useState<{ id: number; nombre: string } | null>(null);
+  const [deletingSucursal, setDeletingSucursal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const [showEditVarianteModal, setShowEditVarianteModal] = useState(false);
@@ -111,9 +114,7 @@ export default function SucursalesPage() {
     ));
   }, [sucursales]);
 
-  // We keep handleDelete targeting the Master Product for now if that's what Delete button means
-  // Actually on SucursalCard we probably shouldn't allow deleting the product from there, but we keep the callback intact.
-  const handleDelete = async () => {
+  const handleDeleteProducto = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
@@ -130,6 +131,25 @@ export default function SucursalesPage() {
       setDeleteTarget(null);
     } finally {
       setDeleting(false);
+    }
+  };
+  const handleDeleteSucursal = async () => {
+    if (!deleteSucursalTarget) return;
+    setDeletingSucursal(true);
+    try {
+      const res = await fetch(`/api/sucursales/${deleteSucursalTarget.id}`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Error al eliminar la sucursal');
+      }
+      showToast('Sucursal eliminada correctamente', 'success');
+      setDeleteSucursalTarget(null);
+      fetchAll();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error al eliminar sucursal', 'error');
+      setDeleteSucursalTarget(null);
+    } finally {
+      setDeletingSucursal(false);
     }
   };
 
@@ -157,6 +177,7 @@ export default function SucursalesPage() {
               {loading ? 'Cargando...' : `${filtered.length} sucursales registradas`}
             </p>
           </div>
+          <Button onClick={() => setShowCreateModal(true)}>+ Nueva sucursal</Button>
         </div>
       )}
 
@@ -184,8 +205,8 @@ export default function SucursalesPage() {
               loading={selected.loadingInventario}
               onBack={() => setSelectedSucursalId(null)}
               onDelete={(idVariante) => {
-                  const idProducto = varianteToProductoMap.get(idVariante);
-                  if (idProducto) setDeleteTarget(idProducto);
+                const idProducto = varianteToProductoMap.get(idVariante);
+                if (idProducto) setDeleteTarget(idProducto);
               }}
               onEdit={handleOpenEditVariante}
               onInfo={handleOpenInfoVariante}
@@ -196,16 +217,46 @@ export default function SucursalesPage() {
       ) : (
         <div className={styles.grid}>
           {filtered.map((s) => (
-            <SucursalCard
-              key={s.id_sucursal}
-              id_sucursal={s.id_sucursal}
-              nombre={s.nombre_lugar}
-              ubicacion={s.ubicacion}
-              inventario={s.inventario}
-              loading={s.loadingInventario}
-              onViewDetails={setSelectedSucursalId}
-            />
+            <div key={s.id_sucursal} className={styles.cardWrapper}>
+              <SucursalCard
+                id_sucursal={s.id_sucursal}
+                nombre={s.nombre_lugar}
+                ubicacion={s.ubicacion}
+                inventario={s.inventario}
+                loading={s.loadingInventario}
+                onViewDetails={setSelectedSucursalId}
+              />
+              <button
+                onClick={() => setDeleteSucursalTarget({ id: s.id_sucursal, nombre: s.nombre_lugar })}
+                title="Eliminar sucursal"
+                className={styles.deleteBtn}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+              </button>
+            </div>
           ))}
+        </div>
+      )}
+
+      {deleteSucursalTarget !== null && (
+        <div className={styles.modalOverlay} onClick={() => !deletingSucursal && setDeleteSucursalTarget(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Eliminar sucursal</h2>
+            <p className={styles.modalText}>
+              ¿Estás seguro que deseas eliminar <strong>{deleteSucursalTarget.nombre}</strong>? Esta acción no se puede deshacer.
+            </p>
+            <div className={styles.modalActions}>
+              <Button variant="secondary" onClick={() => setDeleteSucursalTarget(null)} disabled={deletingSucursal}>Cancelar</Button>
+              <Button variant="danger" onClick={handleDeleteSucursal} disabled={deletingSucursal}>
+                {deletingSucursal ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -216,13 +267,20 @@ export default function SucursalesPage() {
             <p className={styles.modalText}>¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.</p>
             <div className={styles.modalActions}>
               <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancelar</Button>
-              <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+              <Button variant="danger" onClick={handleDeleteProducto} disabled={deleting}>
                 {deleting ? 'Eliminando...' : 'Eliminar'}
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      <CreateSucursalModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={fetchAll}
+        showToast={showToast}
+      />
 
       <EditVarianteModal
         open={showEditVarianteModal}
