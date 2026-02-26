@@ -10,9 +10,9 @@ import NuevoProductoForm, {
   FormErrors,
   validateField,
   buildFormErrors,
-} from './Nuevoproducto';
-import EditProductoModal from './Editproducto';
-import InfoProductoModal from './Infoproducto';
+} from './NuevoProducto';
+import EditProductoModal from './EditProducto';
+import InfoProductoModal from './InfoProducto';
 import AddVarianteModal from './AddVarianteModal';
 import SelectVarianteModal from './SelectVarianteModal';
 import EditVarianteModal from './EditVarianteModal';

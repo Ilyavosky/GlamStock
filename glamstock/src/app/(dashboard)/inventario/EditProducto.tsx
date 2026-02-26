@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
-import NuevoProductoForm, { FormErrors, validateField, buildFormErrors } from './Nuevoproducto';
-import type { FormData } from './Nuevoproducto';
+import NuevoProductoForm, { FormErrors, validateField, buildFormErrors } from './NuevoProducto';
+import type { FormData } from './NuevoProducto';
 import { useProductoEdit } from '@/hooks/useProductoEdit';
 import formStyles from './form.module.css';
 

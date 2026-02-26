@@ -1,4 +1,4 @@
-import styles from './Statscard.module.css';
+import styles from './StatsCard.module.css';
 
 interface StatsCardProps {
   label: string;

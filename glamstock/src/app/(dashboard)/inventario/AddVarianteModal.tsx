@@ -7,7 +7,7 @@ import NuevaVarianteForm, {
   VarianteFormErrors, 
   validateVarianteField, 
   buildVarianteFormErrors 
-} from './Nuevavariante';
+} from './NuevaVariante';
 import type { SucursalForm } from '@/types/inventario-view.types';
 
 interface AddVarianteModalProps {
