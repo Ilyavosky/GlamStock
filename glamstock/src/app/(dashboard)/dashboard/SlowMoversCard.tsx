@@ -17,7 +17,7 @@ export default function SlowMoversCard({ productos }: SlowMoversCardProps) {
       <div className={styles.listContainer}>
         {productos.map((prod, idx) => (
           <div key={`${prod.id_variante}-${idx}`} className={styles.listItem}>
-            <div className={`${styles.rankBadge} ${styles.rankBadgeWarning}`}>{idx + 1}</div>
+            <span className={styles.rankNumber}>{idx + 1}</span>
             <div className={styles.itemDetails}>
               <div className={styles.itemName}>{prod.nombre_producto}</div>
               <div className={styles.itemMeta}>SKU: {prod.sku_variante}</div>

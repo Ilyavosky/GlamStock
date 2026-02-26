@@ -58,6 +58,8 @@ export default function InventarioPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [infoId, setInfoId] = useState<number | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [stockMin, setStockMin] = useState('');
+  const [stockMax, setStockMax] = useState('');
 
   // New variant modal state
   const [showAddVarianteModal, setShowAddVarianteModal] = useState(false);
@@ -142,7 +144,11 @@ export default function InventarioPage() {
   }, [productos]);
 
   const sortedProductos = useMemo(() => {
-    const result = [...filtered];
+    let result = [...filtered];
+
+    if (stockMin) result = result.filter(p => p.totalStock >= Number(stockMin));
+    if (stockMax) result = result.filter(p => p.totalStock <= Number(stockMax));
+
     result.sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
@@ -161,7 +167,7 @@ export default function InventarioPage() {
       return 0;
     });
     return result;
-  }, [filtered, sortField, sortOrder]);
+  }, [filtered, sortField, sortOrder, stockMin, stockMax]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -171,8 +177,6 @@ export default function InventarioPage() {
       setSortOrder('asc');
     }
   };
-
-
 
   const handleOpenEdit = (id: number) => {
     setEditId(id);
@@ -217,36 +221,23 @@ export default function InventarioPage() {
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setFormErrors((prev) => ({
       ...prev,
-      [name]: validateField(
-        name as keyof FormData,
-        value,
-        formData.precio_adquisicion,
-        true,
-      ),
+      [name]: validateField(name as keyof FormData, value, formData.precio_adquisicion, true),
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors = buildFormErrors(formData, true, true);
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setSubmitting(true);
     try {
-      const body = {
-        nombre: formData.nombre.trim(),
-        sku: formData.sku.trim() || undefined,
-      };
+      const body = { nombre: formData.nombre.trim(), sku: formData.sku.trim() || undefined };
       const res = await fetch("/api/productos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -259,15 +250,11 @@ export default function InventarioPage() {
       handleCloseModal();
       fetchProductos();
     } catch (err) {
-      showToast(
-        err instanceof Error ? err.message : "Error al crear el producto",
-        "error",
-      );
+      showToast(err instanceof Error ? err.message : "Error al crear el producto", "error");
     } finally {
       setSubmitting(false);
     }
   };
-
 
   const totalPages = Math.ceil(sortedProductos.length / ITEMS_PER_PAGE);
   const paginated = sortedProductos.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -300,17 +287,8 @@ export default function InventarioPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <button className={`${styles.dropdownItem} ${styles.dropdownDanger}`} onClick={() => { setDeleteId(row.id); setDeleteNombre(row.nombre); setOpenMenuId(null); }}>Eliminar</button>
-              <button className={styles.dropdownItem} onClick={() => { 
-                setAddVarianteProductId(row.id);
-                setAddVarianteProductoNombre(row.nombre);
-                setShowAddVarianteModal(true);
-                setOpenMenuId(null);
-              }}>Agregar variante</button>
-              <button className={styles.dropdownItem} onClick={() => { 
-                setSelectVarianteProductId(row.id);
-                setShowSelectVarianteModal(true);
-                setOpenMenuId(null);
-              }}>Editar variantes</button>
+              <button className={styles.dropdownItem} onClick={() => { setAddVarianteProductId(row.id); setAddVarianteProductoNombre(row.nombre); setShowAddVarianteModal(true); setOpenMenuId(null); }}>Agregar variante</button>
+              <button className={styles.dropdownItem} onClick={() => { setSelectVarianteProductId(row.id); setShowSelectVarianteModal(true); setOpenMenuId(null); }}>Editar variantes</button>
               <button className={styles.dropdownItem} onClick={() => handleOpenEdit(row.id)}>Editar producto</button>
               <button className={styles.dropdownItem} onClick={() => handleOpenInfo(row.id)}>Más info general</button>
             </div>
@@ -328,12 +306,36 @@ export default function InventarioPage() {
         </div>
       )}
 
-      <SearchInput placeholder="Buscar productos..." onSearch={handleSearch} />
+      <div className={styles.filterBar}>
+        <div className={styles.filterSearch}>
+          <SearchInput placeholder="Buscar productos..." onSearch={handleSearch} />
+        </div>
+
+        <div className={styles.filterDivider} />
+
+        <span className={styles.filterLabel}>Stock:</span>
+        <input
+          className={styles.filterInput}
+          type="number" placeholder="Mín" min="0"
+          value={stockMin} onChange={e => { setStockMin(e.target.value); setPage(1); }}
+        />
+        <input
+          className={styles.filterInput}
+          type="number" placeholder="Máx" min="0"
+          value={stockMax} onChange={e => { setStockMax(e.target.value); setPage(1); }}
+        />
+
+        {(stockMin || stockMax) && (
+          <button className={styles.filterClear} onClick={() => { setStockMin(''); setStockMax(''); }}>
+            Limpiar
+          </button>
+        )}
+      </div>
 
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.title}>General</h1>
-          <p className={styles.subtitle}>Total productos: {filtered.length}</p>
+          <p className={styles.subtitle}>Total productos: {sortedProductos.length}</p>
         </div>
         <Button onClick={handleOpenModal}>+ Agregar producto</Button>
       </div>
@@ -377,11 +379,7 @@ export default function InventarioPage() {
         open={showSelectVarianteModal}
         productoId={selectVarianteProductId}
         onClose={() => setShowSelectVarianteModal(false)}
-        onSelect={(idVar) => {
-            setShowSelectVarianteModal(false);
-            setEditVarianteId(idVar);
-            setShowEditVarianteModal(true);
-        }}
+        onSelect={(idVar) => { setShowSelectVarianteModal(false); setEditVarianteId(idVar); setShowEditVarianteModal(true); }}
       />
 
       <EditVarianteModal
@@ -416,19 +414,11 @@ export default function InventarioPage() {
         showToast={showToast}
       />
       
-      <Dialog
-        open={showModal}
-        onClose={handleCloseModal}
-        title="Nuevo producto"
-      >
+      <Dialog open={showModal} onClose={handleCloseModal} title="Nuevo producto">
         <NuevoProductoForm
           formData={formData}
           formErrors={formErrors}
-          sucursales={sucursales.map((s) => ({
-            id_sucursal: s.id_sucursal,
-            nombre_lugar: s.nombre_lugar,
-            ubicacion: s.ubicacion,
-          }))}
+          sucursales={sucursales.map((s) => ({ id_sucursal: s.id_sucursal, nombre_lugar: s.nombre_lugar, ubicacion: s.ubicacion }))}
           submitting={submitting}
           isCreationMode={true}
           onChange={handleChange}
