@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import formStyles from './form.module.css';
-import styles from './InfoProducto.module.css';
+import styles from './Infoproducto.module.css';
 import type { ProductoConVariantes } from '@/modules/productos/types/productos.types';
 
 interface SelectVarianteModalProps {

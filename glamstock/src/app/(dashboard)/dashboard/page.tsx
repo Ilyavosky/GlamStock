@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import Table, { Column } from "@/components/ui/Table";
 import SearchInput from "@/components/ui/SearchInput";
 import Button from "@/components/ui/Button";
-import StatsCard from "./StatsCard";
+import StatsCard from "./Statscard";
 import BestSellersCard from './BestSellersCard';
 import SlowMoversCard from './SlowMoversCard';
 import SucursalesPerformance from './SucursalesPerformance';

@@ -3,7 +3,7 @@
 import Dialog from '@/components/ui/Dialog';
 import Button from '@/components/ui/Button';
 import { useProductoInfo } from '@/hooks/useProductoInfo';
-import styles from './InfoProducto.module.css';
+import styles from './Infoproducto.module.css';
 import formStyles from './form.module.css';
 
 interface InfoProductoModalProps {
